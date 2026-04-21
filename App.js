@@ -9,6 +9,8 @@ import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, update
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
+import { storage } from './firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const Stack = createStackNavigator();
 
@@ -517,13 +519,28 @@ function CreateListingScreen({ navigation }) {
     ]);
   };
 
+  const uploadPhotos = async (photoUris) => {
+    const uploadedUrls = [];
+    for (const uri of photoUris) {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const filename = "listings/" + auth.currentUser.uid + "/" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+      const storageRef = ref(storage, filename);
+      await uploadBytes(storageRef, blob);
+      const url = await getDownloadURL(storageRef);
+      uploadedUrls.push(url);
+    }
+    return uploadedUrls;
+  };
+
   const handleSubmit = async () => {
     if (!year || !make || !model) { Alert.alert("Error", "Please enter year, make and model"); return; }
     setLoading(true);
     try {
       const user = auth.currentUser;
+      const uploadedPhotos = photos.length > 0 ? await uploadPhotos(photos) : [];
       await addDoc(collection(db, "listings"), {
-        year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, photos,
+        year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, photos: uploadedPhotos,
         sellerId: user.uid, sellerEmail: user.email, createdAt: serverTimestamp(), status: "active",
       });
       Alert.alert("Success", "Listing created! Dealers will be notified.");
