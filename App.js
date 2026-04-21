@@ -8,8 +8,24 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } f
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
+import * as Notifications from 'expo-notifications';
 
 const Stack = createStackNavigator();
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+async function registerForPushNotifications() {
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return null;
+  const token = await Notifications.getExpoPushTokenAsync({ projectId: "aa722540-034a-4737-9e73-1efc9e4dd59c" });
+  return token.data;
+}
 
 const CAR_DATA = {
   "Toyota": ["Camry", "Corolla", "RAV4", "Tacoma", "Tundra", "Highlander", "4Runner", "Sienna", "Prius", "Avalon", "Yaris", "Sequoia", "Land Cruiser", "Venza", "C-HR"],
@@ -121,7 +137,12 @@ function SellerLoginScreen({ navigation }) {
     if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const token = await registerForPushNotifications();
+      if (token) {
+        const snap = await getDocs(query(collection(db, "users"), where("uid", "==", cred.user.uid)));
+        if (!snap.empty) await updateDoc(doc(db, "users", snap.docs[0].id), { pushToken: token });
+      }
       navigation.navigate("SellerDashboard");
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
@@ -131,7 +152,8 @@ function SellerLoginScreen({ navigation }) {
     setLoading(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await addDoc(collection(db, "users"), { uid: cred.user.uid, email, userType: "seller" });
+      const token = await registerForPushNotifications();
+      await addDoc(collection(db, "users"), { uid: cred.user.uid, email, userType: "seller", pushToken: token || "" });
       navigation.navigate("SellerDashboard");
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
@@ -398,6 +420,23 @@ function PlaceBidScreen({ route, navigation }) {
         amount: parseFloat(amount), pickupIncluded, note, status: "pending", createdAt: serverTimestamp(),
       });
       Alert.alert("Success", "Your bid has been placed!");
+      try {
+        const sellerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", listing.sellerId)));
+        if (!sellerSnap.empty) {
+          const sellerToken = sellerSnap.docs[0].data().pushToken;
+          if (sellerToken) {
+            await fetch("https://exp.host/--/api/v2/push/send", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: sellerToken,
+                title: "New Bid Received!",
+                body: "A dealer offered $" + amount + " for your " + listing.year + " " + listing.make + " " + listing.model,
+              }),
+            });
+          }
+        }
+      } catch(e) {}
       navigation.goBack();
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);

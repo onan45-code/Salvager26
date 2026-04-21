@@ -24,6 +24,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "aa722540-034a-4737-9e73-1efc9e4dd59c"
+      }
+    },
+    "owner": "magamarc"
   }
 }

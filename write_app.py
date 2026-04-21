@@ -2,84 +2,99 @@ f = open('App.js', 'r')
 content = f.read()
 f.close()
 
-car_data = """
-const CAR_DATA = {
-  "Toyota": ["Camry", "Corolla", "RAV4", "Tacoma", "Tundra", "Highlander", "4Runner", "Sienna", "Prius", "Avalon", "Yaris", "Sequoia", "Land Cruiser", "Venza", "C-HR"],
-  "Ford": ["F-150", "Mustang", "Explorer", "Escape", "Edge", "Ranger", "Expedition", "Bronco", "Focus", "Fusion", "Taurus", "Maverick", "Transit", "EcoSport"],
-  "Chevrolet": ["Silverado", "Equinox", "Malibu", "Traverse", "Colorado", "Tahoe", "Suburban", "Blazer", "Trailblazer", "Camaro", "Corvette", "Impala", "Spark", "Trax"],
-  "Honda": ["Civic", "Accord", "CR-V", "Pilot", "Odyssey", "Ridgeline", "HR-V", "Passport", "Fit", "Insight"],
-  "Nissan": ["Altima", "Sentra", "Rogue", "Pathfinder", "Frontier", "Titan", "Murano", "Maxima", "Versa", "Armada", "Kicks", "370Z", "GT-R"],
-  "Dodge": ["Ram 1500", "Charger", "Challenger", "Durango", "Journey", "Grand Caravan", "Dakota"],
-  "Jeep": ["Wrangler", "Grand Cherokee", "Cherokee", "Compass", "Renegade", "Gladiator", "Liberty", "Patriot"],
-  "GMC": ["Sierra", "Canyon", "Terrain", "Acadia", "Yukon", "Envoy", "Jimmy", "Safari"],
-  "BMW": ["3 Series", "5 Series", "7 Series", "X1", "X3", "X5", "X7", "M3", "M5", "4 Series", "2 Series"],
-  "Mercedes-Benz": ["C-Class", "E-Class", "S-Class", "GLC", "GLE", "GLS", "A-Class", "CLA", "GLA", "AMG GT"],
-  "Hyundai": ["Elantra", "Sonata", "Tucson", "Santa Fe", "Kona", "Palisade", "Accent", "Veloster", "Ioniq"],
-  "Kia": ["Optima", "Sorento", "Sportage", "Soul", "Forte", "Telluride", "Stinger", "Niro", "Carnival"],
-  "Subaru": ["Outback", "Forester", "Crosstrek", "Impreza", "Legacy", "Ascent", "WRX", "BRZ"],
-  "Volkswagen": ["Jetta", "Passat", "Tiguan", "Atlas", "Golf", "GTI", "Beetle", "Touareg"],
-  "Chrysler": ["300", "Pacifica", "Town and Country", "200", "PT Cruiser"],
-  "Buick": ["Enclave", "Encore", "LaCrosse", "Verano", "Envision", "Regal"],
-  "Cadillac": ["Escalade", "XT5", "CTS", "ATS", "SRX", "Eldorado", "DeVille"],
-  "Lexus": ["RX", "ES", "IS", "GX", "LX", "NX", "LS", "UX"],
-  "Acura": ["MDX", "RDX", "TLX", "ILX", "NSX", "TSX", "TL"],
-  "Infiniti": ["Q50", "Q60", "QX60", "QX80", "QX50", "G35", "G37"],
-  "Mazda": ["Mazda3", "Mazda6", "CX-5", "CX-9", "MX-5 Miata", "CX-3", "CX-30"],
-  "Mitsubishi": ["Outlander", "Eclipse Cross", "Galant", "Lancer", "Montero"],
-  "Pontiac": ["Grand Prix", "Grand Am", "Firebird", "Trans Am", "Bonneville", "G6"],
-  "Saturn": ["Vue", "Ion", "Aura", "Sky"],
-  "Oldsmobile": ["Alero", "Bravada", "Cutlass", "Intrigue", "Silhouette"],
-  "Other": ["Other"]
-};
-
-const TRIMS = ["Base", "LE", "SE", "XLE", "Limited", "Sport", "LT", "LTZ", "EX", "EX-L", "Touring", "Premium", "Luxury", "ST", "GT", "SS", "RS", "SXT", "R/T", "SRT", "Platinum", "King Ranch", "Lariat", "XLT", "Other"];
-"""
-
-old = "const Stack = createStackNavigator();"
-new = "const Stack = createStackNavigator();\n" + car_data
+old = "import * as ImagePicker from 'expo-image-picker';"
+new = "import * as ImagePicker from 'expo-image-picker';\nimport * as Notifications from 'expo-notifications';"
 
 content = content.replace(old, new)
 
-old2 = """  const years = Array.from({length: 46}, (_, i) => (2025 - i).toString());
-  const [year, setYear] = useState("2025");
-  const [make, setMake] = useState("");
-  const [model, setModel] = useState("");"""
+old2 = "const Stack = createStackNavigator();"
+new2 = """const Stack = createStackNavigator();
 
-new2 = """  const years = Array.from({length: 46}, (_, i) => (2025 - i).toString());
-  const makes = Object.keys(CAR_DATA).sort();
-  const [year, setYear] = useState("2025");
-  const [make, setMake] = useState("");
-  const [model, setModel] = useState("");
-  const [trim, setTrim] = useState("");"""
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+async function registerForPushNotifications() {
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return null;
+  const token = await Notifications.getExpoPushTokenAsync();
+  return token.data;
+}"""
 
 content = content.replace(old2, new2)
 
-old3 = "        year, make, model, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, photos,"
-new3 = "        year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, photos,"
+old3 = """  const handleLogin = async () => {
+    if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      navigation.navigate("SellerDashboard");
+    } catch (error) { Alert.alert("Error", error.message); }
+    setLoading(false);
+  };
+  const handleSignUp = async () => {
+    if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
+    setLoading(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await addDoc(collection(db, "users"), { uid: cred.user.uid, email, userType: "seller" });
+      navigation.navigate("SellerDashboard");
+    } catch (error) { Alert.alert("Error", error.message); }
+    setLoading(false);
+  };"""
+new3 = """  const handleLogin = async () => {
+    if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
+    setLoading(true);
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const token = await registerForPushNotifications();
+      if (token) {
+        const snap = await getDocs(query(collection(db, "users"), where("uid", "==", cred.user.uid)));
+        if (!snap.empty) await updateDoc(doc(db, "users", snap.docs[0].id), { pushToken: token });
+      }
+      navigation.navigate("SellerDashboard");
+    } catch (error) { Alert.alert("Error", error.message); }
+    setLoading(false);
+  };
+  const handleSignUp = async () => {
+    if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
+    setLoading(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      const token = await registerForPushNotifications();
+      await addDoc(collection(db, "users"), { uid: cred.user.uid, email, userType: "seller", pushToken: token || "" });
+      navigation.navigate("SellerDashboard");
+    } catch (error) { Alert.alert("Error", error.message); }
+    setLoading(false);
+  };"""
 
 content = content.replace(old3, new3)
 
-old4 = """        <TextInput style={styles.input} placeholder="Make (e.g. Toyota)" placeholderTextColor="#aaaaaa" value={make} onChangeText={setMake} />
-        <TextInput style={styles.input} placeholder="Model (e.g. Camry)" placeholderTextColor="#aaaaaa" value={model} onChangeText={setModel} />"""
-
-new4 = """        <View style={styles.pickerContainer}>
-          <Picker selectedValue={make} onValueChange={(val) => { setMake(val); setModel(""); }} style={styles.picker}>
-            <Picker.Item label="Select Make" value="" />
-            {makes.map(m => <Picker.Item key={m} label={m} value={m} />)}
-          </Picker>
-        </View>
-        <View style={styles.pickerContainer}>
-          <Picker selectedValue={model} onValueChange={(val) => setModel(val)} style={styles.picker} enabled={make !== ""}>
-            <Picker.Item label={make ? "Select Model" : "Select Make First"} value="" />
-            {make ? CAR_DATA[make].map(m => <Picker.Item key={m} label={m} value={m} />) : []}
-          </Picker>
-        </View>
-        <View style={styles.pickerContainer}>
-          <Picker selectedValue={trim} onValueChange={(val) => setTrim(val)} style={styles.picker}>
-            <Picker.Item label="Select Trim" value="" />
-            {TRIMS.map(t => <Picker.Item key={t} label={t} value={t} />)}
-          </Picker>
-        </View>"""
+old4 = """      Alert.alert("Success", "Your bid has been placed!");
+      navigation.goBack();"""
+new4 = """      Alert.alert("Success", "Your bid has been placed!");
+      try {
+        const sellerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", listing.sellerId)));
+        if (!sellerSnap.empty) {
+          const sellerToken = sellerSnap.docs[0].data().pushToken;
+          if (sellerToken) {
+            await fetch("https://exp.host/--/api/v2/push/send", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: sellerToken,
+                title: "New Bid Received!",
+                body: "A dealer offered $" + amount + " for your " + listing.year + " " + listing.make + " " + listing.model,
+              }),
+            });
+          }
+        }
+      } catch(e) {}
+      navigation.goBack();"""
 
 content = content.replace(old4, new4)
 
