@@ -328,7 +328,7 @@ function SellerBidsScreen({ route, navigation }) {
         <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}</Text>
         <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
         <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
-        {listing.status === "sold" && <Text style={styles.soldBadge}>SOLD - \${listing.soldPrice}</Text>}
+        {listing.status === "sold" && <Text style={styles.soldBadge}>SOLD - ${listing.soldPrice}</Text>}
       </View>
       {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : bids.length === 0 ? (
         <View style={styles.emptyState}>
@@ -339,7 +339,7 @@ function SellerBidsScreen({ route, navigation }) {
         <View key={bid.id} style={[styles.bidCard, bid.status === "accepted" && styles.acceptedCard]}>
           {index === 0 && listing.status !== "sold" && <Text style={styles.highestBadge}>HIGHEST OFFER</Text>}
           {bid.status === "accepted" && <Text style={styles.acceptedBadge}>ACCEPTED</Text>}
-          <Text style={styles.bidAmount}>\${bid.amount}</Text>
+          <Text style={styles.bidAmount}>${bid.amount}</Text>
           <Text style={styles.listingDetail}>Pickup: {bid.pickupIncluded ? "Included" : "Not included"}</Text>
           <Text style={styles.listingDetail}>Dealer: {bid.dealerEmail}</Text>
           {bid.note ? <Text style={styles.listingDetail}>Note: {bid.note}</Text> : null}
@@ -616,47 +616,48 @@ const styles = StyleSheet.create({
   scrollContainer: { flex: 1, backgroundColor: "#1a1a2e", padding: 24 },
   scrollContent: { paddingBottom: 60 },
   header: { alignItems: "center", marginBottom: 60 },
-  logo: { fontSize: 36, fontWeight: "bold", color: "#ffffff", marginBottom: 12 },
+  logo: { fontSize: 42, fontWeight: "bold", color: "#ffffff", marginBottom: 12, letterSpacing: 1 },
   tagline: { fontSize: 16, color: "#aaaaaa", textAlign: "center", marginBottom: 40 },
   form: { width: "100%", gap: 16 },
   formContainer: { gap: 16 },
   input: { backgroundColor: "#2a2a3e", color: "#ffffff", padding: 16, borderRadius: 12, fontSize: 16, width: "100%" },
   textArea: { height: 120, textAlignVertical: "top" },
   buttons: { width: "100%", gap: 16 },
-  sellerButton: { backgroundColor: "#e94560", padding: 18, borderRadius: 12, alignItems: "center", marginBottom: 16 },
+  sellerButton: { backgroundColor: "#e94560", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 16 },
   sellerButtonText: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
-  dealerButton: { backgroundColor: "#ffffff", padding: 18, borderRadius: 12, alignItems: "center" },
+  dealerButton: { backgroundColor: "#ffffff", padding: 18, borderRadius: 14, alignItems: "center" },
   dealerButtonText: { color: "#1a1a2e", fontSize: 18, fontWeight: "bold" },
   secondaryButton: { borderWidth: 1, borderColor: "#ffffff", padding: 18, borderRadius: 12, alignItems: "center" },
   secondaryButtonText: { color: "#ffffff", fontSize: 18 },
   activeToggle: { backgroundColor: "#e94560", borderColor: "#e94560" },
   backText: { color: "#aaaaaa", textAlign: "center", fontSize: 16, marginTop: 8 },
   dashboardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 60, marginBottom: 24 },
-  dashboardTitle: { fontSize: 28, fontWeight: "bold", color: "#ffffff" },
+  dashboardTitle: { fontSize: 30, fontWeight: "bold", color: "#ffffff" },
   logoutText: { color: "#e94560", fontSize: 16 },
   emptyState: { alignItems: "center", marginTop: 60 },
   emptyStateText: { color: "#ffffff", fontSize: 18, fontWeight: "bold", marginBottom: 8 },
   emptyStateSubtext: { color: "#aaaaaa", fontSize: 14 },
   sectionLabel: { color: "#aaaaaa", fontSize: 14, fontWeight: "bold", marginTop: 8, textTransform: "uppercase" },
-  listingCard: { backgroundColor: "#2a2a3e", borderRadius: 12, padding: 16, marginBottom: 16 },
+  listingCard: { backgroundColor: "#2a2a3e", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
   listingCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   listingTitle: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
   listingDetail: { color: "#aaaaaa", fontSize: 14, marginBottom: 4 },
-  listingPhoto: { width: "100%", height: 180, borderRadius: 8, marginBottom: 12 },
+  listingPhoto: { width: "100%", height: 200, borderRadius: 12, marginBottom: 12 },
   bidListingPhoto: { width: 120, height: 90, borderRadius: 8, marginRight: 8 },
   viewBidsText: { color: "#e94560", fontSize: 14, marginTop: 8, fontWeight: "bold" },
   bidButton2: { color: "#e94560", fontSize: 14, marginTop: 8, fontWeight: "bold" },
   soldCard: { opacity: 0.7, borderWidth: 1, borderColor: "#2ecc71" },
   soldBadge: { color: "#2ecc71", fontSize: 12, fontWeight: "bold" },
   conditionBadge: { color: "#e94560", fontSize: 12, fontWeight: "bold", marginTop: 4 },
-  bidCard: { backgroundColor: "#2a2a3e", borderRadius: 12, padding: 16, marginBottom: 16 },
+  bidCard: { backgroundColor: "#2a2a3e", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
   acceptedCard: { borderWidth: 2, borderColor: "#2ecc71" },
   bidAmount: { color: "#ffffff", fontSize: 24, fontWeight: "bold", marginBottom: 8 },
   highestBadge: { color: "#e94560", fontSize: 12, fontWeight: "bold", marginBottom: 8 },
   acceptedBadge: { color: "#2ecc71", fontSize: 12, fontWeight: "bold", marginBottom: 8 },
   acceptButton: { backgroundColor: "#2ecc71", padding: 12, borderRadius: 8, alignItems: "center", marginTop: 12 },
+  acceptedButton: { backgroundColor: "#888888" },
   acceptButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "bold" },
-  pickerContainer: { backgroundColor: "#ffffff", borderRadius: 12, marginBottom: 4, height: 55, overflow: "hidden", justifyContent: "center" },
+  pickerContainer: { backgroundColor: "#ffffff", borderRadius: 12, marginBottom: 4, height: 52, overflow: "hidden", justifyContent: "center" },
   picker: { color: "#000000", fontSize: 18, fontWeight: "bold" },
   toggleRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
   toggleButton: { flex: 1, padding: 14, borderRadius: 12, alignItems: "center", backgroundColor: "#2a2a3e", borderWidth: 1, borderColor: "#5a5a8e" },
@@ -667,7 +668,7 @@ const styles = StyleSheet.create({
   photoButtonText: { color: "#ffffff", fontSize: 16 },
   photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
   photoWrapper: { position: "relative" },
-  photoThumb: { width: 80, height: 80, borderRadius: 8 },
+  photoThumb: { width: 90, height: 90, borderRadius: 10 },
   removePhoto: { position: "absolute", top: -8, right: -8, backgroundColor: "#e94560", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" },
   removePhotoText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
 });
