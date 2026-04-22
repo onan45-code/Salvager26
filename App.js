@@ -584,30 +584,33 @@ function CreateListingScreen({ navigation }) {
       </View>
       <View style={styles.formContainer}>
         <Text style={styles.sectionLabel}>Vehicle Info</Text>
-        <View style={styles.pickerContainer}>
-          <Picker selectedValue={year} onValueChange={(val) => setYear(val)} style={styles.picker}>
-            <Picker.Item label="Select Year" value="" />
-            {years.map(y => <Picker.Item key={y} label={y} value={y} />)}
-          </Picker>
+        <View style={styles.pickerRow}>
+          <View style={[styles.pickerContainer, styles.pickerHalf]}>
+            <Picker selectedValue={year} onValueChange={(val) => setYear(val)} style={styles.picker}>
+              <Picker.Item label="Year" value="" />
+              {years.map(y => <Picker.Item key={y} label={y} value={y} />)}
+            </Picker>
+          </View>
+          <View style={[styles.pickerContainer, styles.pickerHalf]}>
+            <Picker selectedValue={make} onValueChange={(val) => { setMake(val); setModel(""); setTrim(""); }} style={styles.picker}>
+              <Picker.Item label="Make" value="" />
+              {makes.map(m => <Picker.Item key={m} label={m} value={m} />)}
+            </Picker>
+          </View>
         </View>
-        <View style={styles.pickerContainer}>
-          <Picker selectedValue={make} onValueChange={(val) => { setMake(val); setModel(""); setTrim(""); }} style={styles.picker}>
-            <Picker.Item label="Select Make" value="" />
-            {makes.map(m => <Picker.Item key={m} label={m} value={m} />)}
-          </Picker>
-        </View>
-        <View style={styles.pickerContainer}>
-          <Picker selectedValue={model} onValueChange={(val) => setModel(val)} style={styles.picker} enabled={make !== ""}>
-            <Picker.Item label={make ? "Select Model" : "Select Make First"} value="" />
-            {make ? CAR_DATA[make].map(m => <Picker.Item key={m} label={m} value={m} />) : []}
-          </Picker>
-        </View>
-        <Text style={{color: "#aaaaaa", fontSize: 12, marginBottom: 4}}>Select closest trim if exact year not listed</Text>
-        <View style={styles.pickerContainer}>
-          <Picker selectedValue={trim} onValueChange={(val) => setTrim(val)} style={styles.picker}>
-            <Picker.Item label="Select Trim" value="" />
-            {(make && TRIM_DATA[make] ? TRIM_DATA[make] : ["Base", "Sport", "Limited", "Premium", "Other"]).map(t => <Picker.Item key={t} label={t} value={t} />)}
-          </Picker>
+        <View style={styles.pickerRow}>
+          <View style={[styles.pickerContainer, styles.pickerHalf]}>
+            <Picker selectedValue={model} onValueChange={(val) => setModel(val)} style={styles.picker} enabled={make !== ""}>
+              <Picker.Item label="Model" value="" />
+              {make ? CAR_DATA[make].map(m => <Picker.Item key={m} label={m} value={m} />) : []}
+            </Picker>
+          </View>
+          <View style={[styles.pickerContainer, styles.pickerHalf]}>
+            <Picker selectedValue={trim} onValueChange={(val) => setTrim(val)} style={styles.picker}>
+              <Picker.Item label="Trim" value="" />
+              {(make && TRIM_DATA[make] ? TRIM_DATA[make] : ["Base", "Sport", "Limited", "Premium", "Other"]).map(t => <Picker.Item key={t} label={t} value={t} />)}
+            </Picker>
+          </View>
         </View>
         <TextInput style={styles.input} placeholder="Mileage" placeholderTextColor="#aaaaaa" keyboardType="numeric" value={mileage} onChangeText={setMileage} />
         <Text style={styles.sectionLabel}>Location</Text>
@@ -701,6 +704,8 @@ const styles = StyleSheet.create({
   acceptedButton: { backgroundColor: "#888888" },
   acceptButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "bold" },
   pickerContainer: { backgroundColor: "#ffffff", borderRadius: 12, marginBottom: 4, height: 52, overflow: "hidden", justifyContent: "center" },
+  pickerRow: { flexDirection: "row", gap: 8 },
+  pickerHalf: { flex: 1 },
   picker: { color: "#000000", fontSize: 18, fontWeight: "bold" },
   toggleRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
   toggleButton: { flex: 1, padding: 14, borderRadius: 12, alignItems: "center", backgroundColor: "#2a2a3e", borderWidth: 1, borderColor: "#5a5a8e" },
