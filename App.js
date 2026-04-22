@@ -43,18 +43,18 @@ const CAR_DATA = {
 };
 
 const TRIM_DATA = {
-  "Toyota": ["L", "LE", "XLE", "XSE", "SE", "TRD Off-Road", "TRD Sport", "TRD Pro", "Limited", "Platinum", "1794 Edition", "SR", "SR5", "Adventure", "Nightshade", "Other"],
-  "Ford": ["XL", "XLT", "Lariat", "King Ranch", "Platinum", "Limited", "Raptor", "S", "SE", "SEL", "Titanium", "ST", "ST-Line", "Tremor", "Other"],
-  "Chevrolet": ["LS", "LT", "LTZ", "Z71", "Trail Boss", "High Country", "SS", "ZL1", "RST", "Premier", "Activ", "Sport", "Custom", "Other"],
+  "Toyota": ["L", "LE", "XLE", "XSE", "SE", "TRD Off-Road", "TRD Sport", "TRD Pro", "Limited", "Platinum", "SR", "SR5", "Adventure", "Other"],
+  "Ford": ["XL", "XLT", "Lariat", "King Ranch", "Platinum", "Limited", "Raptor", "S", "SE", "SEL", "Titanium", "ST", "Tremor", "Other"],
+  "Chevrolet": ["LS", "LT", "LTZ", "Z71", "Trail Boss", "High Country", "SS", "ZL1", "RST", "Premier", "Sport", "Custom", "Other"],
   "Honda": ["LX", "Sport", "EX", "EX-L", "Touring", "Sport Touring", "Type R", "Si", "Other"],
-  "Nissan": ["S", "SV", "SL", "SR", "Platinum", "Pro-4X", "Midnight Edition", "NISMO", "Other"],
+  "Nissan": ["S", "SV", "SL", "SR", "Platinum", "Pro-4X", "NISMO", "Other"],
   "Dodge": ["SXT", "GT", "R/T", "Scat Pack", "SRT 392", "SRT Hellcat", "Redeye", "SE", "Other"],
   "Jeep": ["Sport", "Sport S", "Sahara", "Rubicon", "Willys", "High Altitude", "Overland", "Summit", "Trailhawk", "Other"],
   "GMC": ["Base", "SLE", "SLT", "Denali", "AT4", "Pro", "Elevation", "Other"],
   "BMW": ["Base", "xDrive", "sDrive", "M Sport", "M", "M Competition", "Other"],
   "Mercedes-Benz": ["Base", "4MATIC", "AMG", "AMG Line", "Maybach", "Other"],
-  "Hyundai": ["SE", "SEL", "N Line", "Limited", "Ultimate", "Blue", "Sport", "Other"],
-  "Kia": ["LX", "S", "EX", "GT-Line", "SX", "SX Prestige", "GT", "X-Line", "Other"],
+  "Hyundai": ["SE", "SEL", "N Line", "Limited", "Ultimate", "Sport", "Other"],
+  "Kia": ["LX", "S", "EX", "GT-Line", "SX", "SX Prestige", "GT", "Other"],
   "Subaru": ["Base", "Premium", "Sport", "Limited", "Touring", "Onyx Edition", "Wilderness", "Other"],
   "Volkswagen": ["S", "SE", "SEL", "R-Line", "GTI", "GLI", "R", "Other"],
   "Chrysler": ["Touring", "Touring-L", "Limited", "Pinnacle", "300S", "300C", "Other"],
@@ -93,17 +93,7 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        try {
-          const snap = await getDocs(query(collection(db, "users"), where("uid", "==", user.uid)));
-          if (!snap.empty) {
-            const userType = snap.docs[0].data().userType;
-            setInitialRoute(userType === "dealer" ? "DealerDashboard" : "SellerDashboard");
-          } else {
-            setInitialRoute("Welcome");
-          }
-        } catch(e) {
-          setInitialRoute("Welcome");
-        }
+        setInitialRoute("Dashboard");
       } else {
         setInitialRoute("Welcome");
       }
@@ -124,11 +114,11 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
-        <Stack.Screen name="SellerLogin" component={SellerLoginScreen} />
-        <Stack.Screen name="DealerLogin" component={DealerLoginScreen} />
-        <Stack.Screen name="SellerDashboard" component={SellerDashboard} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="MyListings" component={MyListingsScreen} />
+        <Stack.Screen name="BrowseCars" component={BrowseCarsScreen} />
         <Stack.Screen name="SellerBids" component={SellerBidsScreen} />
-        <Stack.Screen name="DealerDashboard" component={DealerDashboard} />
         <Stack.Screen name="PlaceBid" component={PlaceBidScreen} />
         <Stack.Screen name="CreateListing" component={CreateListingScreen} />
       </Stack.Navigator>
@@ -142,24 +132,26 @@ function WelcomeScreen({ navigation }) {
       <StatusBar style="light" />
       <View style={styles.header}>
         <Text style={styles.logo}>Salvager26</Text>
-        <Text style={styles.tagline}>Sell your car fast. Get real offers.</Text>
+        <Text style={styles.tagline}>Buy and sell salvage cars fast.</Text>
       </View>
       <View style={styles.buttons}>
-        <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("SellerLogin")}>
-          <Text style={styles.sellerButtonText}>I want to sell my car</Text>
+        <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("Login", { mode: "login" })}>
+          <Text style={styles.sellerButtonText}>Log In</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("DealerLogin")}>
-          <Text style={styles.dealerButtonText}>I am a dealer</Text>
+        <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("Login", { mode: "signup" })}>
+          <Text style={styles.dealerButtonText}>Create Account</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-function SellerLoginScreen({ navigation }) {
+function LoginScreen({ navigation, route }) {
+  const mode = route.params?.mode || "login";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
   const handleLogin = async () => {
     if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
     setLoading(true);
@@ -170,35 +162,40 @@ function SellerLoginScreen({ navigation }) {
         const snap = await getDocs(query(collection(db, "users"), where("uid", "==", cred.user.uid)));
         if (!snap.empty) await updateDoc(doc(db, "users", snap.docs[0].id), { pushToken: token });
       }
-      navigation.navigate("SellerDashboard");
+      navigation.navigate("Dashboard");
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
   };
+
   const handleSignUp = async () => {
     if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
     setLoading(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       const token = await registerForPushNotifications();
-      await addDoc(collection(db, "users"), { uid: cred.user.uid, email, userType: "seller", pushToken: token || "" });
-      navigation.navigate("SellerDashboard");
+      await addDoc(collection(db, "users"), { uid: cred.user.uid, email, pushToken: token || "" });
+      navigation.navigate("Dashboard");
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
   };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <Text style={styles.logo}>Seller Login</Text>
+      <Text style={styles.logo}>{mode === "login" ? "Welcome Back" : "Create Account"}</Text>
       <Text style={styles.tagline}>Enter your details to continue</Text>
       <View style={styles.form}>
         <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#aaaaaa" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
         <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#aaaaaa" secureTextEntry value={password} onChangeText={setPassword} />
-        <TouchableOpacity style={styles.sellerButton} onPress={handleLogin}>
-          <Text style={styles.sellerButtonText}>{loading ? "Loading..." : "Log In"}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleSignUp}>
-          <Text style={styles.secondaryButtonText}>Create Account</Text>
-        </TouchableOpacity>
+        {mode === "login" ? (
+          <TouchableOpacity style={styles.sellerButton} onPress={handleLogin}>
+            <Text style={styles.sellerButtonText}>{loading ? "Loading..." : "Log In"}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.sellerButton} onPress={handleSignUp}>
+            <Text style={styles.sellerButtonText}>{loading ? "Loading..." : "Create Account"}</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
@@ -207,52 +204,34 @@ function SellerLoginScreen({ navigation }) {
   );
 }
 
-function DealerLoginScreen({ navigation }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const handleLogin = async () => {
-    if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
-    setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigation.navigate("DealerDashboard");
-    } catch (error) { Alert.alert("Error", error.message); }
-    setLoading(false);
-  };
-  const handleSignUp = async () => {
-    if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
-    setLoading(true);
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await addDoc(collection(db, "users"), { uid: cred.user.uid, email, userType: "dealer" });
-      navigation.navigate("DealerDashboard");
-    } catch (error) { Alert.alert("Error", error.message); }
-    setLoading(false);
+function DashboardScreen({ navigation }) {
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigation.navigate("Welcome");
   };
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <Text style={styles.logo}>Dealer Login</Text>
-      <Text style={styles.tagline}>Enter your details to continue</Text>
-      <View style={styles.form}>
-        <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#aaaaaa" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
-        <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#aaaaaa" secureTextEntry value={password} onChangeText={setPassword} />
-        <TouchableOpacity style={styles.dealerButton} onPress={handleLogin}>
-          <Text style={styles.dealerButtonText}>{loading ? "Loading..." : "Log In"}</Text>
+      <View style={styles.dashboardHeader}>
+        <Text style={styles.logo}>Salvager26</Text>
+        <TouchableOpacity onPress={handleLogout}>
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleSignUp}>
-          <Text style={styles.secondaryButtonText}>Create Account</Text>
+      </View>
+      <Text style={styles.tagline}>What would you like to do?</Text>
+      <View style={styles.buttons}>
+        <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("MyListings")}>
+          <Text style={styles.sellerButtonText}>My Listings</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>Back</Text>
+        <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("BrowseCars")}>
+          <Text style={styles.dealerButtonText}>Browse & Bid on Cars</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-function SellerDashboard({ navigation }) {
+function MyListingsScreen({ navigation }) {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const fetchListings = async () => {
@@ -266,16 +245,12 @@ function SellerDashboard({ navigation }) {
     setLoading(false);
   };
   useEffect(() => { fetchListings(); }, []);
-  const handleLogout = async () => {
-    await signOut(auth);
-    navigation.navigate("Welcome");
-  };
   return (
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>My Listings</Text>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.logoutText}>Back</Text>
         </TouchableOpacity>
       </View>
       <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("CreateListing")}>
@@ -328,9 +303,9 @@ function SellerBidsScreen({ route, navigation }) {
       { text: "Accept", onPress: async () => {
         setAccepting(true);
         try {
-          await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: bid.amount, soldToEmail: bid.dealerEmail });
+          await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail });
           await updateDoc(doc(db, "bids", bid.id), { status: "accepted" });
-          Alert.alert("Deal Done!", "Sold for $" + bid.amount + ". Dealer: " + bid.dealerEmail);
+          Alert.alert("Deal Done!", "Sold for $" + bid.amount + ". Buyer: " + bid.buyerEmail);
         } catch(e) { Alert.alert("Error", e.message); }
         setAccepting(false);
       }}
@@ -360,7 +335,7 @@ function SellerBidsScreen({ route, navigation }) {
       {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : bids.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>No bids yet.</Text>
-          <Text style={styles.emptyStateSubtext}>Dealers will be notified!</Text>
+          <Text style={styles.emptyStateSubtext}>Buyers will be notified!</Text>
         </View>
       ) : bids.map((bid, index) => (
         <View key={bid.id} style={[styles.bidCard, bid.status === "accepted" && styles.acceptedCard]}>
@@ -368,7 +343,7 @@ function SellerBidsScreen({ route, navigation }) {
           {bid.status === "accepted" && <Text style={styles.acceptedBadge}>ACCEPTED</Text>}
           <Text style={styles.bidAmount}>${bid.amount}</Text>
           <Text style={styles.listingDetail}>Pickup: {bid.pickupIncluded ? "Included" : "Not included"}</Text>
-          <Text style={styles.listingDetail}>Dealer: {bid.dealerEmail}</Text>
+          <Text style={styles.listingDetail}>Buyer: {bid.buyerEmail}</Text>
           {bid.note ? <Text style={styles.listingDetail}>Note: {bid.note}</Text> : null}
           {listing.status !== "sold" ? (
             <TouchableOpacity style={[styles.acceptButton, bid.status === "accepted" && styles.acceptedButton]} onPress={() => bid.status !== "accepted" && handleAcceptOffer(bid)} disabled={accepting || bid.status === "accepted"}>
@@ -381,7 +356,7 @@ function SellerBidsScreen({ route, navigation }) {
   );
 }
 
-function DealerDashboard({ navigation }) {
+function BrowseCarsScreen({ navigation }) {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -389,22 +364,18 @@ function DealerDashboard({ navigation }) {
       try {
         const snapshot = await getDocs(collection(db, "listings"));
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setListings(data);
+        setListings(data.filter(l => l.sellerId !== auth.currentUser.uid));
       } catch (error) { Alert.alert("Error", error.message); }
       setLoading(false);
     };
     fetchListings();
   }, []);
-  const handleLogout = async () => {
-    await signOut(auth);
-    navigation.navigate("Welcome");
-  };
   return (
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
       <View style={styles.dashboardHeader}>
-        <Text style={styles.dashboardTitle}>Available Cars</Text>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
+        <Text style={styles.dashboardTitle}>Browse Cars</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.logoutText}>Back</Text>
         </TouchableOpacity>
       </View>
       {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : listings.length === 0 ? (
@@ -443,7 +414,7 @@ function PlaceBidScreen({ route, navigation }) {
     try {
       const user = auth.currentUser;
       await addDoc(collection(db, "bids"), {
-        listingId: listing.id, dealerId: user.uid, dealerEmail: user.email,
+        listingId: listing.id, buyerId: user.uid, buyerEmail: user.email,
         amount: parseFloat(amount), pickupIncluded, note, status: "pending", createdAt: serverTimestamp(),
       });
       Alert.alert("Success", "Your bid has been placed!");
@@ -458,7 +429,7 @@ function PlaceBidScreen({ route, navigation }) {
               body: JSON.stringify({
                 to: sellerToken,
                 title: "New Bid Received!",
-                body: "A dealer offered $" + amount + " for your " + listing.year + " " + listing.make + " " + listing.model,
+                body: "Someone offered $" + amount + " for your " + listing.year + " " + listing.make + " " + listing.model,
               }),
             });
           }
@@ -569,7 +540,7 @@ function CreateListingScreen({ navigation }) {
         year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, photos: uploadedPhotos,
         sellerId: user.uid, sellerEmail: user.email, createdAt: serverTimestamp(), status: "active",
       });
-      Alert.alert("Success", "Listing created! Dealers will be notified.");
+      Alert.alert("Success", "Listing created!");
       navigation.goBack();
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
@@ -628,10 +599,10 @@ function CreateListingScreen({ navigation }) {
         </View>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, hasTitle ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasTitle(!hasTitle)}>
-            <Text style={styles.toggleText}>{hasTitle ? "Has Title" : "No Title"}</Text>
+            <Text style={styles.toggleText}>{hasTitle ? "Drivable" : "Not Drivable"}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, needsTow && styles.toggleActiveRed]} onPress={() => setNeedsTow(!needsTow)}>
-            <Text style={styles.toggleText}>{needsTow ? "Needs Tow" : "Self Drive"}</Text>
+          <TouchableOpacity style={[styles.toggleButton, needsTow ? styles.toggleActiveRed : styles.toggleActive]} onPress={() => setNeedsTow(!needsTow)}>
+            <Text style={styles.toggleText}>{needsTow ? "Needs Tow" : "Will Deliver"}</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Damage Level</Text>
@@ -722,8 +693,6 @@ const styles = StyleSheet.create({
   toggleButton: { flex: 1, padding: 14, borderRadius: 12, alignItems: "center", backgroundColor: "#2a2a3e", borderWidth: 1, borderColor: "#5a5a8e" },
   toggleActive: { backgroundColor: "#2ecc71", borderColor: "#2ecc71" },
   toggleActiveRed: { backgroundColor: "#e94560", borderColor: "#e94560" },
-  toggleYellow: { backgroundColor: "#f1c40f", borderColor: "#f1c40f" },
-  toggleOrange: { backgroundColor: "#e67e22", borderColor: "#e67e22" },
   toggleText: { color: "#ffffff", fontSize: 14, fontWeight: "bold" },
   photoButton: { backgroundColor: "#2a2a3e", borderRadius: 12, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#5a5a8e", marginBottom: 8 },
   photoButtonText: { color: "#ffffff", fontSize: 16 },
