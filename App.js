@@ -618,15 +618,15 @@ function CreateListingScreen({ navigation }) {
         <TextInput style={styles.input} placeholder="ZIP Code" placeholderTextColor="#aaaaaa" keyboardType="numeric" value={zip} onChangeText={setZip} />
         <Text style={styles.sectionLabel}>Condition - tap to toggle</Text>
         <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, runs && styles.toggleActive]} onPress={() => setRuns(!runs)}>
+          <TouchableOpacity style={[styles.toggleButton, runs ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setRuns(!runs)}>
             <Text style={styles.toggleText}>{runs ? "Runs" : "Not Running"}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, hasKeys && styles.toggleActive]} onPress={() => setHasKeys(!hasKeys)}>
+          <TouchableOpacity style={[styles.toggleButton, hasKeys ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasKeys(!hasKeys)}>
             <Text style={styles.toggleText}>{hasKeys ? "Has Keys" : "No Keys"}</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, hasTitle && styles.toggleActive]} onPress={() => setHasTitle(!hasTitle)}>
+          <TouchableOpacity style={[styles.toggleButton, hasTitle ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasTitle(!hasTitle)}>
             <Text style={styles.toggleText}>{hasTitle ? "Has Title" : "No Title"}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.toggleButton, needsTow && styles.toggleActiveRed]} onPress={() => setNeedsTow(!needsTow)}>
