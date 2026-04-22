@@ -3,32 +3,15 @@ import { StyleSheet, Text, View, TouchableOpacity, TextInput, Alert, ScrollView,
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useState, useEffect } from 'react';
-import { auth, db } from './firebase';
+import { auth, db, storage } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
-import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Notifications from 'expo-notifications';
-import { storage } from './firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const Stack = createStackNavigator();
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
-async function registerForPushNotifications() {
-  const { status } = await Notifications.requestPermissionsAsync();
-  if (status !== 'granted') return null;
-  const token = await Notifications.getExpoPushTokenAsync({ projectId: "aa722540-034a-4737-9e73-1efc9e4dd59c" });
-  return token.data;
-}
 
 const CAR_DATA = {
   "Toyota": ["Camry", "Corolla", "RAV4", "Tacoma", "Tundra", "Highlander", "4Runner", "Sienna", "Prius", "Avalon", "Yaris", "Sequoia", "Land Cruiser", "Venza", "C-HR"],
@@ -88,6 +71,20 @@ const TRIM_DATA = {
   "Other": ["Base", "Standard", "Sport", "Premium", "Limited", "Other"]
 };
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+async function registerForPushNotifications() {
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return null;
+  const token = await Notifications.getExpoPushTokenAsync({ projectId: "aa722540-034a-4737-9e73-1efc9e4dd59c" });
+  return token.data;
+}
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState("Welcome");
@@ -373,11 +370,11 @@ function SellerBidsScreen({ route, navigation }) {
           <Text style={styles.listingDetail}>Pickup: {bid.pickupIncluded ? "Included" : "Not included"}</Text>
           <Text style={styles.listingDetail}>Dealer: {bid.dealerEmail}</Text>
           {bid.note ? <Text style={styles.listingDetail}>Note: {bid.note}</Text> : null}
-          {listing.status !== "sold" && (
-            <TouchableOpacity style={styles.acceptButton} onPress={() => handleAcceptOffer(bid)} disabled={accepting}>
-              <Text style={styles.acceptButtonText}>{accepting ? "Processing..." : "Accept Offer"}</Text>
+          {listing.status !== "sold" ? (
+            <TouchableOpacity style={[styles.acceptButton, bid.status === "accepted" && styles.acceptedButton]} onPress={() => bid.status !== "accepted" && handleAcceptOffer(bid)} disabled={accepting || bid.status === "accepted"}>
+              <Text style={styles.acceptButtonText}>{bid.status === "accepted" ? "Offer Accepted ✓" : accepting ? "Processing..." : "Accept Offer"}</Text>
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
       ))}
     </ScrollView>
@@ -513,7 +510,6 @@ function PlaceBidScreen({ route, navigation }) {
 function CreateListingScreen({ navigation }) {
   const years = Array.from({length: 46}, (_, i) => (2025 - i).toString());
   const makes = Object.keys(CAR_DATA).sort();
-
   const [year, setYear] = useState("2025");
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
@@ -527,60 +523,6 @@ function CreateListingScreen({ navigation }) {
   const [hasTitle, setHasTitle] = useState(true);
   const [needsTow, setNeedsTow] = useState(false);
   const [photos, setPhotos] = useState([]);
-  const [vin, setVin] = useState("");
-  const [scanning, setScanning] = useState(false);
-  const [vinLoading, setVinLoading] = useState(false);
-
-  const lookupVin = async (vinNumber) => {
-    if (!vinNumber || vinNumber.length !== 17) {
-      Alert.alert("Error", "Please enter a valid 17-character VIN");
-      return;
-    }
-    setVinLoading(true);
-    try {
-      const response = await fetch("https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/" + vinNumber + "?format=json");
-      const data = await response.json();
-      const results = data.Results;
-      const getVal = (var1) => results.find(r => r.Variable === var1)?.Value || "";
-      const carYear = getVal("Model Year");
-      const carMake = getVal("Make");
-      const carModel = getVal("Model");
-      if (carYear) setYear(carYear);
-      if (carMake) {
-        const matchedMake = Object.keys(CAR_DATA).find(m => m.toLowerCase() === carMake.toLowerCase());
-        setMake(matchedMake || carMake);
-      }
-      if (carModel) setModel(carModel);
-      Alert.alert("VIN Found!", carYear + " " + carMake + " " + carModel);
-    } catch (e) {
-      Alert.alert("Error", "Could not look up VIN. Please enter details manually.");
-    }
-    setVinLoading(false);
-  };
-
-  const [permission, requestPermission] = useCameraPermissions();
-
-  const handleScan = async () => {
-    if (!permission || !permission.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
-        Alert.alert("Permission needed", "Please allow camera access to scan VIN");
-        return;
-      }
-    }
-    setScanning(true);
-  };
-
-  const handleBarCodeScanned = ({ data }) => {
-    const cleaned = data.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().substring(0, 17);
-    setScanning(false);
-    setVin(cleaned);
-    if (cleaned.length === 17) {
-      lookupVin(cleaned);
-    } else {
-      Alert.alert("Partial scan", "Got " + cleaned.length + " characters: " + cleaned + ". Please try again or enter manually.");
-    }
-  };
   const [loading, setLoading] = useState(false);
 
   const pickImage = async () => {
@@ -641,25 +583,6 @@ function CreateListingScreen({ navigation }) {
         </TouchableOpacity>
       </View>
       <View style={styles.formContainer}>
-        <Text style={styles.sectionLabel}>VIN Lookup (Optional)</Text>
-        {scanning ? (
-          <View style={styles.scannerContainer}>
-            <CameraView onBarcodeScanned={handleBarCodeScanned} barcodeScannerSettings={{ barcodeTypes: ["code39", "code128", "pdf417", "qr", "aztec", "ean13", "ean8", "upc_e", "datamatrix", "itf14", "codabar"] }} style={styles.scanner} />
-            <TouchableOpacity style={styles.cancelScanButton} onPress={() => setScanning(false)}>
-              <Text style={styles.cancelScanText}>Cancel Scan</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.vinRow}>
-            <TextInput style={[styles.input, styles.vinInput]} placeholder="Enter VIN (17 chars)" placeholderTextColor="#aaaaaa" value={vin} onChangeText={setVin} autoCapitalize="characters" maxLength={17} />
-            <TouchableOpacity style={styles.vinButton} onPress={() => lookupVin(vin)}>
-              <Text style={styles.vinButtonText}>{vinLoading ? "..." : "Look up"}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.scanButton} onPress={handleScan}>
-              <Text style={styles.scanButtonText}>Scan</Text>
-            </TouchableOpacity>
-          </View>
-        )}
         <Text style={styles.sectionLabel}>Vehicle Info</Text>
         <View style={styles.pickerContainer}>
           <Picker selectedValue={year} onValueChange={(val) => setYear(val)} style={styles.picker}>
@@ -668,7 +591,7 @@ function CreateListingScreen({ navigation }) {
           </Picker>
         </View>
         <View style={styles.pickerContainer}>
-          <Picker selectedValue={make} onValueChange={(val) => { setMake(val); setModel(""); }} style={styles.picker}>
+          <Picker selectedValue={make} onValueChange={(val) => { setMake(val); setModel(""); setTrim(""); }} style={styles.picker}>
             <Picker.Item label="Select Make" value="" />
             {makes.map(m => <Picker.Item key={m} label={m} value={m} />)}
           </Picker>
@@ -791,14 +714,4 @@ const styles = StyleSheet.create({
   photoThumb: { width: 90, height: 90, borderRadius: 10 },
   removePhoto: { position: "absolute", top: -8, right: -8, backgroundColor: "#e94560", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" },
   removePhotoText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
-  vinRow: { flexDirection: "row", gap: 8, marginBottom: 4 },
-  vinInput: { flex: 1, marginBottom: 0 },
-  vinButton: { backgroundColor: "#e94560", padding: 16, borderRadius: 12, justifyContent: "center" },
-  vinButtonText: { color: "#ffffff", fontWeight: "bold" },
-  scanButton: { backgroundColor: "#2a2a3e", padding: 16, borderRadius: 12, justifyContent: "center", borderWidth: 1, borderColor: "#5a5a8e" },
-  scanButtonText: { color: "#ffffff", fontWeight: "bold" },
-  scannerContainer: { height: 300, borderRadius: 12, overflow: "hidden", marginBottom: 8 },
-  scanner: { flex: 1 },
-  cancelScanButton: { backgroundColor: "#e94560", padding: 12, alignItems: "center" },
-  cancelScanText: { color: "#ffffff", fontWeight: "bold" },
 });
