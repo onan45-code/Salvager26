@@ -8,6 +8,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } f
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Notifications from 'expo-notifications';
 import { storage } from './firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -526,6 +527,55 @@ function CreateListingScreen({ navigation }) {
   const [hasTitle, setHasTitle] = useState(true);
   const [needsTow, setNeedsTow] = useState(false);
   const [photos, setPhotos] = useState([]);
+  const [vin, setVin] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [vinLoading, setVinLoading] = useState(false);
+
+  const lookupVin = async (vinNumber) => {
+    if (!vinNumber || vinNumber.length !== 17) {
+      Alert.alert("Error", "Please enter a valid 17-character VIN");
+      return;
+    }
+    setVinLoading(true);
+    try {
+      const response = await fetch("https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/" + vinNumber + "?format=json");
+      const data = await response.json();
+      const results = data.Results;
+      const getVal = (var1) => results.find(r => r.Variable === var1)?.Value || "";
+      const carYear = getVal("Model Year");
+      const carMake = getVal("Make");
+      const carModel = getVal("Model");
+      if (carYear) setYear(carYear);
+      if (carMake) {
+        const matchedMake = Object.keys(CAR_DATA).find(m => m.toLowerCase() === carMake.toLowerCase());
+        setMake(matchedMake || carMake);
+      }
+      if (carModel) setModel(carModel);
+      Alert.alert("VIN Found!", carYear + " " + carMake + " " + carModel);
+    } catch (e) {
+      Alert.alert("Error", "Could not look up VIN. Please enter details manually.");
+    }
+    setVinLoading(false);
+  };
+
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const handleScan = async () => {
+    if (!permission || !permission.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        Alert.alert("Permission needed", "Please allow camera access to scan VIN");
+        return;
+      }
+    }
+    setScanning(true);
+  };
+
+  const handleBarCodeScanned = ({ data }) => {
+    setScanning(false);
+    setVin(data);
+    lookupVin(data);
+  };
   const [loading, setLoading] = useState(false);
 
   const pickImage = async () => {
@@ -586,6 +636,25 @@ function CreateListingScreen({ navigation }) {
         </TouchableOpacity>
       </View>
       <View style={styles.formContainer}>
+        <Text style={styles.sectionLabel}>VIN Lookup (Optional)</Text>
+        {scanning ? (
+          <View style={styles.scannerContainer}>
+            <CameraView onBarcodeScanned={handleBarCodeScanned} barcodeScannerSettings={{ barcodeTypes: ["code39", "code128", "pdf417"] }} style={styles.scanner} />
+            <TouchableOpacity style={styles.cancelScanButton} onPress={() => setScanning(false)}>
+              <Text style={styles.cancelScanText}>Cancel Scan</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.vinRow}>
+            <TextInput style={[styles.input, styles.vinInput]} placeholder="Enter VIN (17 chars)" placeholderTextColor="#aaaaaa" value={vin} onChangeText={setVin} autoCapitalize="characters" maxLength={17} />
+            <TouchableOpacity style={styles.vinButton} onPress={() => lookupVin(vin)}>
+              <Text style={styles.vinButtonText}>{vinLoading ? "..." : "Look up"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.scanButton} onPress={handleScan}>
+              <Text style={styles.scanButtonText}>Scan</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <Text style={styles.sectionLabel}>Vehicle Info</Text>
         <View style={styles.pickerContainer}>
           <Picker selectedValue={year} onValueChange={(val) => setYear(val)} style={styles.picker}>
@@ -717,4 +786,14 @@ const styles = StyleSheet.create({
   photoThumb: { width: 90, height: 90, borderRadius: 10 },
   removePhoto: { position: "absolute", top: -8, right: -8, backgroundColor: "#e94560", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" },
   removePhotoText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
+  vinRow: { flexDirection: "row", gap: 8, marginBottom: 4 },
+  vinInput: { flex: 1, marginBottom: 0 },
+  vinButton: { backgroundColor: "#e94560", padding: 16, borderRadius: 12, justifyContent: "center" },
+  vinButtonText: { color: "#ffffff", fontWeight: "bold" },
+  scanButton: { backgroundColor: "#2a2a3e", padding: 16, borderRadius: 12, justifyContent: "center", borderWidth: 1, borderColor: "#5a5a8e" },
+  scanButtonText: { color: "#ffffff", fontWeight: "bold" },
+  scannerContainer: { height: 300, borderRadius: 12, overflow: "hidden", marginBottom: 8 },
+  scanner: { flex: 1 },
+  cancelScanButton: { backgroundColor: "#e94560", padding: 12, alignItems: "center" },
+  cancelScanText: { color: "#ffffff", fontWeight: "bold" },
 });
