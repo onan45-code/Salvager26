@@ -522,6 +522,7 @@ function CreateListingScreen({ navigation }) {
   const [hasKeys, setHasKeys] = useState(true);
   const [hasTitle, setHasTitle] = useState(true);
   const [needsTow, setNeedsTow] = useState(false);
+  const [damage, setDamage] = useState("");
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -565,7 +566,7 @@ function CreateListingScreen({ navigation }) {
       const user = auth.currentUser;
       const uploadedPhotos = photos.length > 0 ? await uploadPhotos(photos) : [];
       await addDoc(collection(db, "listings"), {
-        year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, photos: uploadedPhotos,
+        year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, photos: uploadedPhotos,
         sellerId: user.uid, sellerEmail: user.email, createdAt: serverTimestamp(), status: "active",
       });
       Alert.alert("Success", "Listing created! Dealers will be notified.");
@@ -632,6 +633,16 @@ function CreateListingScreen({ navigation }) {
           <TouchableOpacity style={[styles.toggleButton, needsTow && styles.toggleActiveRed]} onPress={() => setNeedsTow(!needsTow)}>
             <Text style={styles.toggleText}>{needsTow ? "Needs Tow" : "Self Drive"}</Text>
           </TouchableOpacity>
+        </View>
+        <Text style={styles.sectionLabel}>Damage Level</Text>
+        <View style={styles.pickerContainer}>
+          <Picker selectedValue={damage} onValueChange={(val) => setDamage(val)} style={styles.picker}>
+            <Picker.Item label="Select Damage Level" value="" />
+            <Picker.Item label="No Damage" value="none" />
+            <Picker.Item label="Minor Damage" value="minor" />
+            <Picker.Item label="Moderate Damage" value="moderate" />
+            <Picker.Item label="Major Damage" value="major" />
+          </Picker>
         </View>
         <Text style={styles.sectionLabel}>Notes</Text>
         <TextInput style={[styles.input, styles.textArea]} placeholder="Describe the condition, any issues, etc." placeholderTextColor="#aaaaaa" multiline numberOfLines={4} value={notes} onChangeText={setNotes} />
@@ -711,6 +722,8 @@ const styles = StyleSheet.create({
   toggleButton: { flex: 1, padding: 14, borderRadius: 12, alignItems: "center", backgroundColor: "#2a2a3e", borderWidth: 1, borderColor: "#5a5a8e" },
   toggleActive: { backgroundColor: "#2ecc71", borderColor: "#2ecc71" },
   toggleActiveRed: { backgroundColor: "#e94560", borderColor: "#e94560" },
+  toggleYellow: { backgroundColor: "#f1c40f", borderColor: "#f1c40f" },
+  toggleOrange: { backgroundColor: "#e67e22", borderColor: "#e67e22" },
   toggleText: { color: "#ffffff", fontSize: 14, fontWeight: "bold" },
   photoButton: { backgroundColor: "#2a2a3e", borderRadius: 12, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#5a5a8e", marginBottom: 8 },
   photoButtonText: { color: "#ffffff", fontSize: 16 },
