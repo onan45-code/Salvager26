@@ -572,9 +572,14 @@ function CreateListingScreen({ navigation }) {
   };
 
   const handleBarCodeScanned = ({ data }) => {
+    const cleaned = data.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().substring(0, 17);
     setScanning(false);
-    setVin(data);
-    lookupVin(data);
+    setVin(cleaned);
+    if (cleaned.length === 17) {
+      lookupVin(cleaned);
+    } else {
+      Alert.alert("Partial scan", "Got " + cleaned.length + " characters: " + cleaned + ". Please try again or enter manually.");
+    }
   };
   const [loading, setLoading] = useState(false);
 
@@ -639,7 +644,7 @@ function CreateListingScreen({ navigation }) {
         <Text style={styles.sectionLabel}>VIN Lookup (Optional)</Text>
         {scanning ? (
           <View style={styles.scannerContainer}>
-            <CameraView onBarcodeScanned={handleBarCodeScanned} barcodeScannerSettings={{ barcodeTypes: ["code39", "code128", "pdf417"] }} style={styles.scanner} />
+            <CameraView onBarcodeScanned={handleBarCodeScanned} barcodeScannerSettings={{ barcodeTypes: ["code39", "code128", "pdf417", "qr", "aztec", "ean13", "ean8", "upc_e", "datamatrix", "itf14", "codabar"] }} style={styles.scanner} />
             <TouchableOpacity style={styles.cancelScanButton} onPress={() => setScanning(false)}>
               <Text style={styles.cancelScanText}>Cancel Scan</Text>
             </TouchableOpacity>
