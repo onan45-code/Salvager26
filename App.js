@@ -244,7 +244,10 @@ function MyListingsScreen({ navigation }) {
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
   };
-  useEffect(() => { fetchListings(); }, []);
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", fetchListings);
+    return unsubscribe;
+  }, [navigation]);
   return (
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
       <View style={styles.dashboardHeader}>
@@ -343,7 +346,7 @@ function SellerBidsScreen({ route, navigation }) {
           {bid.status === "accepted" && <Text style={styles.acceptedBadge}>ACCEPTED</Text>}
           <Text style={styles.bidAmount}>${bid.amount}</Text>
           <Text style={styles.listingDetail}>Pickup: {bid.pickupIncluded ? "Included" : "Not included"}</Text>
-          <Text style={styles.listingDetail}>Buyer: {bid.buyerEmail}</Text>
+          {bid.status === "accepted" ? <Text style={styles.listingDetail}>Buyer: {bid.buyerEmail}</Text> : <Text style={styles.listingDetail}>Buyer: Contact hidden until offer accepted</Text>}
           {bid.note ? <Text style={styles.listingDetail}>Note: {bid.note}</Text> : null}
           {listing.status !== "sold" ? (
             <TouchableOpacity style={[styles.acceptButton, bid.status === "accepted" && styles.acceptedButton]} onPress={() => bid.status !== "accepted" && handleAcceptOffer(bid)} disabled={accepting || bid.status === "accepted"}>
