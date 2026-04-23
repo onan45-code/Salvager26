@@ -367,6 +367,8 @@ function BrowseCarsScreen({ navigation }) {
   const [zipCode, setZipCode] = useState("");
   const [radius, setRadius] = useState("50");
   const [filtering, setFiltering] = useState(false);
+  const [yearFrom, setYearFrom] = useState("");
+  const [yearTo, setYearTo] = useState("");
 
   const getZipCoords = async (zip) => {
     const response = await fetch("https://api.zippopotam.us/us/" + zip);
@@ -385,13 +387,16 @@ function BrowseCarsScreen({ navigation }) {
       const userCoords = await getZipCoords(zipCode);
       if (!userCoords) { Alert.alert("Error", "Invalid ZIP code"); setFilteredListings(allListings); setFiltering(false); return; }
       const nearby = [];
+      const fromYear = yearFrom ? parseInt(yearFrom) : 0;
+      const toYear = yearTo ? parseInt(yearTo) : 9999;
       for (const listing of allListings) {
         if (!listing.zip) { nearby.push(listing); continue; }
         const listingCoords = await getZipCoords(listing.zip);
         if (!listingCoords) { nearby.push(listing); continue; }
         const distanceMeters = getDistance(userCoords, listingCoords);
         const distanceMiles = distanceMeters / 1609.34;
-        if (distanceMiles <= parseFloat(radius)) {
+        const listingYear = parseInt(listing.year) || 0;
+        if (distanceMiles <= parseFloat(radius) && listingYear >= fromYear && listingYear <= toYear) {
           nearby.push({ ...listing, distanceMiles: Math.round(distanceMiles) });
         }
       }
@@ -431,6 +436,20 @@ function BrowseCarsScreen({ navigation }) {
             <Picker.Item label="200 miles" value="200" />
             <Picker.Item label="Any distance" value="99999" />
           </Picker>
+        </View>
+        <View style={styles.pickerRow}>
+          <View style={[styles.pickerContainer, styles.pickerHalf]}>
+            <Picker selectedValue={yearFrom} onValueChange={(val) => setYearFrom(val)} style={styles.picker}>
+              <Picker.Item label="From Year" value="" />
+              {Array.from({length: 46}, (_, i) => (2025 - i).toString()).map(y => <Picker.Item key={y} label={y} value={y} />)}
+            </Picker>
+          </View>
+          <View style={[styles.pickerContainer, styles.pickerHalf]}>
+            <Picker selectedValue={yearTo} onValueChange={(val) => setYearTo(val)} style={styles.picker}>
+              <Picker.Item label="To Year" value="" />
+              {Array.from({length: 46}, (_, i) => (2025 - i).toString()).map(y => <Picker.Item key={y} label={y} value={y} />)}
+            </Picker>
+          </View>
         </View>
         <TouchableOpacity style={styles.filterButton} onPress={() => applyRadiusFilter(listings)}>
           <Text style={styles.filterButtonText}>{filtering ? "Filtering..." : "Search"}</Text>
@@ -744,7 +763,7 @@ const styles = StyleSheet.create({
   acceptButton: { backgroundColor: "#2ecc71", padding: 12, borderRadius: 8, alignItems: "center", marginTop: 12 },
   acceptedButton: { backgroundColor: "#888888" },
   acceptButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "bold" },
-  pickerContainer: { backgroundColor: "#ffffff", borderRadius: 12, marginBottom: 4, height: 52, overflow: "hidden", justifyContent: "center" },
+  pickerContainer: { backgroundColor: "#ffffff", borderRadius: 12, marginBottom: 4, height: 58, overflow: "hidden", justifyContent: "center" },
   pickerRow: { flexDirection: "row", gap: 8 },
   pickerHalf: { flex: 1 },
   picker: { color: "#000000", fontSize: 18, fontWeight: "bold" },
