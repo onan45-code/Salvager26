@@ -10,6 +10,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
+import { getDistance } from 'geolib';
 
 const Stack = createStackNavigator();
 
@@ -361,13 +362,52 @@ function SellerBidsScreen({ route, navigation }) {
 
 function BrowseCarsScreen({ navigation }) {
   const [listings, setListings] = useState([]);
+  const [filteredListings, setFilteredListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [zipCode, setZipCode] = useState("");
+  const [radius, setRadius] = useState("50");
+  const [filtering, setFiltering] = useState(false);
+
+  const getZipCoords = async (zip) => {
+    const response = await fetch("https://api.zippopotam.us/us/" + zip);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return { latitude: parseFloat(data.places[0].latitude), longitude: parseFloat(data.places[0].longitude) };
+  };
+
+  const applyRadiusFilter = async (allListings) => {
+    if (!zipCode || zipCode.length < 5) {
+      setFilteredListings(allListings);
+      return;
+    }
+    setFiltering(true);
+    try {
+      const userCoords = await getZipCoords(zipCode);
+      if (!userCoords) { Alert.alert("Error", "Invalid ZIP code"); setFilteredListings(allListings); setFiltering(false); return; }
+      const nearby = [];
+      for (const listing of allListings) {
+        if (!listing.zip) { nearby.push(listing); continue; }
+        const listingCoords = await getZipCoords(listing.zip);
+        if (!listingCoords) { nearby.push(listing); continue; }
+        const distanceMeters = getDistance(userCoords, listingCoords);
+        const distanceMiles = distanceMeters / 1609.34;
+        if (distanceMiles <= parseFloat(radius)) {
+          nearby.push({ ...listing, distanceMiles: Math.round(distanceMiles) });
+        }
+      }
+      setFilteredListings(nearby);
+    } catch(e) { setFilteredListings(allListings); }
+    setFiltering(false);
+  };
+
   useEffect(() => {
     const fetchListings = async () => {
       try {
         const snapshot = await getDocs(collection(db, "listings"));
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setListings(data.filter(l => l.sellerId !== auth.currentUser.uid));
+        const filtered = data.filter(l => l.sellerId !== auth.currentUser.uid && l.status !== "sold");
+        setListings(filtered);
+        setFilteredListings(filtered);
       } catch (error) { Alert.alert("Error", error.message); }
       setLoading(false);
     };
@@ -381,12 +421,27 @@ function BrowseCarsScreen({ navigation }) {
           <Text style={styles.logoutText}>Back</Text>
         </TouchableOpacity>
       </View>
-      {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : listings.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No listings yet.</Text>
-          <Text style={styles.emptyStateSubtext}>Check back soon!</Text>
+      <View style={styles.filterContainer}>
+        <TextInput style={[styles.input, styles.zipInput]} placeholder="Your ZIP code" placeholderTextColor="#aaaaaa" keyboardType="numeric" maxLength={5} value={zipCode} onChangeText={setZipCode} />
+        <View style={styles.pickerContainer}>
+          <Picker selectedValue={radius} onValueChange={(val) => setRadius(val)} style={styles.picker}>
+            <Picker.Item label="25 miles" value="25" />
+            <Picker.Item label="50 miles" value="50" />
+            <Picker.Item label="100 miles" value="100" />
+            <Picker.Item label="200 miles" value="200" />
+            <Picker.Item label="Any distance" value="99999" />
+          </Picker>
         </View>
-      ) : listings.map(listing => (
+        <TouchableOpacity style={styles.filterButton} onPress={() => applyRadiusFilter(listings)}>
+          <Text style={styles.filterButtonText}>{filtering ? "Filtering..." : "Search"}</Text>
+        </TouchableOpacity>
+      </View>
+      {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : filteredListings.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>No listings found.</Text>
+          <Text style={styles.emptyStateSubtext}>Try expanding your search radius!</Text>
+        </View>
+      ) : filteredListings.map(listing => (
         <TouchableOpacity key={listing.id} style={[styles.listingCard, listing.status === "sold" && styles.soldCard]} onPress={() => listing.status !== "sold" && navigation.navigate("PlaceBid", { listing })}>
           {listing.photos && listing.photos.length > 0 && (
             <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
@@ -398,6 +453,7 @@ function BrowseCarsScreen({ navigation }) {
           <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
           <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
           {listing.runs === false && <Text style={styles.conditionBadge}>Not Running</Text>}
+          {listing.distanceMiles !== undefined && <Text style={styles.listingDetail}>{listing.distanceMiles} miles away</Text>}
           {listing.status !== "sold" && <Text style={styles.bidButton2}>Place Bid →</Text>}
         </TouchableOpacity>
       ))}
@@ -704,4 +760,8 @@ const styles = StyleSheet.create({
   photoThumb: { width: 90, height: 90, borderRadius: 10 },
   removePhoto: { position: "absolute", top: -8, right: -8, backgroundColor: "#e94560", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" },
   removePhotoText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
+  filterContainer: { gap: 8, marginBottom: 16 },
+  zipInput: { marginBottom: 0 },
+  filterButton: { backgroundColor: "#e94560", padding: 14, borderRadius: 12, alignItems: "center" },
+  filterButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "bold" },
 });
