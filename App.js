@@ -10,6 +10,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
+import * as Location from 'expo-location';
 import { getDistance } from 'geolib';
 
 const Stack = createStackNavigator();
@@ -369,6 +370,31 @@ function BrowseCarsScreen({ navigation }) {
   const [filtering, setFiltering] = useState(false);
   const [yearFrom, setYearFrom] = useState("");
   const [yearTo, setYearTo] = useState("");
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  const detectLocation = async () => {
+    setLocationLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Please allow location access to auto-detect your area");
+        setLocationLoading(false);
+        return;
+      }
+      const location = await Location.getCurrentPositionAsync({});
+      const geocode = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+      if (geocode && geocode[0] && geocode[0].postalCode) {
+        setZipCode(geocode[0].postalCode);
+        Alert.alert("Location detected!", "ZIP code set to " + geocode[0].postalCode);
+      }
+    } catch(e) {
+      Alert.alert("Error", "Could not detect location. Please enter ZIP manually.");
+    }
+    setLocationLoading(false);
+  };
 
   const getZipCoords = async (zip) => {
     const response = await fetch("https://api.zippopotam.us/us/" + zip);
@@ -427,7 +453,12 @@ function BrowseCarsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
       <View style={styles.filterContainer}>
-        <TextInput style={[styles.input, styles.zipInput]} placeholder="Your ZIP code" placeholderTextColor="#aaaaaa" keyboardType="numeric" maxLength={5} value={zipCode} onChangeText={setZipCode} />
+        <View style={styles.zipRow}>
+          <TextInput style={[styles.input, styles.zipInput]} placeholder="Your ZIP code" placeholderTextColor="#aaaaaa" keyboardType="numeric" maxLength={5} value={zipCode} onChangeText={setZipCode} />
+          <TouchableOpacity style={styles.locationButton} onPress={detectLocation}>
+            <Text style={styles.locationButtonText}>{locationLoading ? "..." : "📍 Auto"}</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.pickerContainer}>
           <Picker selectedValue={radius} onValueChange={(val) => setRadius(val)} style={styles.picker}>
             <Picker.Item label="25 miles" value="25" />
@@ -780,7 +811,10 @@ const styles = StyleSheet.create({
   removePhoto: { position: "absolute", top: -8, right: -8, backgroundColor: "#e94560", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" },
   removePhotoText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
   filterContainer: { gap: 8, marginBottom: 16 },
-  zipInput: { marginBottom: 0 },
+  zipInput: { flex: 1, marginBottom: 0 },
   filterButton: { backgroundColor: "#e94560", padding: 14, borderRadius: 12, alignItems: "center" },
   filterButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "bold" },
+  zipRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  locationButton: { backgroundColor: "#2a2a3e", padding: 14, borderRadius: 12, justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "#5a5a8e", minWidth: 80 },
+  locationButtonText: { color: "#ffffff", fontSize: 14, fontWeight: "bold" },
 });
