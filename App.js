@@ -347,7 +347,8 @@ function SellerBidsScreen({ route, navigation }) {
           {index === 0 && listing.status !== "sold" && <Text style={styles.highestBadge}>HIGHEST OFFER</Text>}
           {bid.status === "accepted" && <Text style={styles.acceptedBadge}>ACCEPTED</Text>}
           <Text style={styles.bidAmount}>${bid.amount}</Text>
-          <Text style={styles.listingDetail}>Pickup: {bid.pickupIncluded ? "Included" : "Not included"}</Text>
+
+          {bid.towingIncluded !== undefined && <Text style={styles.listingDetail}>Towing: {bid.towingIncluded ? "Included in bid" : "Not included"}</Text>}
           {bid.status === "accepted" ? <Text style={styles.listingDetail}>Buyer: {bid.buyerEmail}</Text> : <Text style={styles.listingDetail}>Buyer: Contact hidden until offer accepted</Text>}
           {bid.note ? <Text style={styles.listingDetail}>Note: {bid.note}</Text> : null}
           {listing.status !== "sold" ? (
@@ -514,7 +515,7 @@ function BrowseCarsScreen({ navigation }) {
 function PlaceBidScreen({ route, navigation }) {
   const { listing } = route.params;
   const [amount, setAmount] = useState("");
-  const [pickupIncluded, setPickupIncluded] = useState(false);
+  const [towingIncluded, setTowingIncluded] = useState(false);
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const handleSubmitBid = async () => {
@@ -524,7 +525,7 @@ function PlaceBidScreen({ route, navigation }) {
       const user = auth.currentUser;
       await addDoc(collection(db, "bids"), {
         listingId: listing.id, buyerId: user.uid, buyerEmail: user.email,
-        amount: parseFloat(amount), pickupIncluded, note, status: "pending", createdAt: serverTimestamp(),
+        amount: parseFloat(amount), towingIncluded, note, status: "pending", createdAt: serverTimestamp(),
       });
       Alert.alert("Success", "Your bid has been placed!");
       try {
@@ -575,9 +576,12 @@ function PlaceBidScreen({ route, navigation }) {
       <View style={styles.formContainer}>
         <Text style={styles.sectionLabel}>Your Offer</Text>
         <TextInput style={styles.input} placeholder="Bid Amount ($)" placeholderTextColor="#aaaaaa" keyboardType="numeric" value={amount} onChangeText={setAmount} />
-        <TouchableOpacity style={[styles.secondaryButton, pickupIncluded && styles.activeToggle]} onPress={() => setPickupIncluded(!pickupIncluded)}>
-          <Text style={styles.secondaryButtonText}>{pickupIncluded ? "Pickup Included" : "No Pickup"}</Text>
-        </TouchableOpacity>
+
+        {listing.needsTow && (
+          <TouchableOpacity style={[styles.secondaryButton, towingIncluded && styles.activeToggle]} onPress={() => setTowingIncluded(!towingIncluded)}>
+            <Text style={styles.secondaryButtonText}>{towingIncluded ? "Towing Included in Bid" : "Towing NOT Included"}</Text>
+          </TouchableOpacity>
+        )}
         <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#aaaaaa" value={note} onChangeText={setNote} />
         <TouchableOpacity style={styles.sellerButton} onPress={handleSubmitBid}>
           <Text style={styles.sellerButtonText}>{loading ? "Placing Bid..." : "Submit Bid"}</Text>
