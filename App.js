@@ -606,7 +606,6 @@ function CreateListingScreen({ navigation }) {
   const [hasKeys, setHasKeys] = useState(true);
   const [hasTitle, setHasTitle] = useState(true);
   const [needsTow, setNeedsTow] = useState(false);
-  const [damage, setDamage] = useState("");
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -650,7 +649,7 @@ function CreateListingScreen({ navigation }) {
       const user = auth.currentUser;
       const uploadedPhotos = photos.length > 0 ? await uploadPhotos(photos) : [];
       await addDoc(collection(db, "listings"), {
-        year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, photos: uploadedPhotos,
+        year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, photos: uploadedPhotos,
         sellerId: user.uid, sellerEmail: user.email, createdAt: serverTimestamp(), status: "active",
       });
       Alert.alert("Success", "Listing created!");
@@ -699,8 +698,10 @@ function CreateListingScreen({ navigation }) {
         </View>
         <TextInput style={styles.input} placeholder="Mileage" placeholderTextColor="#aaaaaa" keyboardType="numeric" value={mileage} onChangeText={setMileage} />
         <Text style={styles.sectionLabel}>Location</Text>
-        <TextInput style={styles.input} placeholder="City" placeholderTextColor="#aaaaaa" value={city} onChangeText={setCity} />
-        <TextInput style={styles.input} placeholder="ZIP Code" placeholderTextColor="#aaaaaa" keyboardType="numeric" value={zip} onChangeText={setZip} />
+        <View style={{flexDirection: "row", gap: 8}}>
+          <TextInput style={[styles.input, {flex: 2}]} placeholder="City" placeholderTextColor="#aaaaaa" value={city} onChangeText={setCity} />
+          <TextInput style={[styles.input, {flex: 1}]} placeholder="ZIP" placeholderTextColor="#aaaaaa" keyboardType="numeric" value={zip} onChangeText={setZip} />
+        </View>
         <Text style={styles.sectionLabel}>Condition - tap to toggle</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, runs ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setRuns(!runs)}>
@@ -717,16 +718,6 @@ function CreateListingScreen({ navigation }) {
           <TouchableOpacity style={[styles.toggleButton, needsTow ? styles.toggleActiveRed : styles.toggleActive]} onPress={() => setNeedsTow(!needsTow)}>
             <Text style={styles.toggleText}>{needsTow ? "Needs Tow" : "Will Deliver"}</Text>
           </TouchableOpacity>
-        </View>
-        <Text style={styles.sectionLabel}>Damage Level</Text>
-        <View style={styles.pickerContainer}>
-          <Picker selectedValue={damage} onValueChange={(val) => setDamage(val)} style={styles.picker}>
-            <Picker.Item label="Select Damage Level" value="" />
-            <Picker.Item label="No Damage" value="none" />
-            <Picker.Item label="Minor Damage" value="minor" />
-            <Picker.Item label="Moderate Damage" value="moderate" />
-            <Picker.Item label="Major Damage" value="major" />
-          </Picker>
         </View>
         <Text style={styles.sectionLabel}>Notes</Text>
         <TextInput style={[styles.input, styles.textArea]} placeholder="Describe the condition, any issues, etc." placeholderTextColor="#aaaaaa" multiline numberOfLines={4} value={notes} onChangeText={setNotes} />

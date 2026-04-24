@@ -3,23 +3,18 @@ content = f.read()
 f.close()
 
 content = content.replace(
-    '  const [pickupIncluded, setPickupIncluded] = useState(false);\n  const [towingIncluded, setTowingIncluded] = useState(false);',
-    '  const [towingIncluded, setTowingIncluded] = useState(false);'
-)
-
-content = content.replace(
-    'amount: parseFloat(amount), pickupIncluded, towingIncluded, note, status: "pending", createdAt: serverTimestamp(),',
-    'amount: parseFloat(amount), towingIncluded, note, status: "pending", createdAt: serverTimestamp(),'
-)
-
-content = content.replace(
-    '        <TouchableOpacity style={[styles.secondaryButton, pickupIncluded && styles.activeToggle]} onPress={() => setPickupIncluded(!pickupIncluded)}>\n          <Text style={styles.secondaryButtonText}>{pickupIncluded ? "Pickup Included" : "No Pickup"}</Text>\n        </TouchableOpacity>',
+    '  const [damage, setDamage] = useState("");\n',
     ''
 )
 
 content = content.replace(
-    '          <Text style={styles.listingDetail}>Pickup: {bid.pickupIncluded ? "Included" : "Not included"}</Text>',
+    '        <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center"}}>\n          <Text style={styles.sectionLabel}>Damage Level</Text>\n          <Text style={{color: "#aaaaaa", fontSize: 12}}>scroll to select</Text>\n        </View>\n        <View style={styles.pickerContainer}>\n          <Picker selectedValue={damage} onValueChange={(val) => setDamage(val)} style={styles.picker}>\n            <Picker.Item label="Select Damage Level" value="" />\n            <Picker.Item label="No Damage" value="none" />\n            <Picker.Item label="Minor Damage" value="minor" />\n            <Picker.Item label="Moderate Damage" value="moderate" />\n            <Picker.Item label="Major Damage" value="major" />\n          </Picker>\n        </View>',
     ''
+)
+
+content = content.replace(
+    'year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, photos: uploadedPhotos,',
+    'year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, photos: uploadedPhotos,'
 )
 
 f = open('App.js', 'w')
