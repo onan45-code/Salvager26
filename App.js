@@ -106,8 +106,8 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#ffffff", alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ color: "#ffffff", fontSize: 18 }}>Loading...</Text>
+      <View style={{ flex: 1, backgroundColor: "#f5f5f5", alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: "#1a1a1a", fontSize: 18 }}>Loading...</Text>
       </View>
     );
   }
@@ -131,7 +131,7 @@ export default function App() {
 function WelcomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <View style={styles.header}>
         <Text style={styles.logo}>Salvager26</Text>
         <Text style={styles.tagline}>Buy and sell salvage cars fast.</Text>
@@ -152,6 +152,11 @@ function LoginScreen({ navigation, route }) {
   const mode = route.params?.mode || "login";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -170,25 +175,43 @@ function LoginScreen({ navigation, route }) {
   };
 
   const handleSignUp = async () => {
-    if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
+    if (!email || !password || !firstName || !lastName || !phone || !zipCode) {
+      Alert.alert("Error", "Please fill in all required fields");
+      return;
+    }
     setLoading(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       const token = await registerForPushNotifications();
-      await addDoc(collection(db, "users"), { uid: cred.user.uid, email, pushToken: token || "" });
+      await addDoc(collection(db, "users"), {
+        uid: cred.user.uid, email, firstName, lastName, phone, zipCode,
+        companyName: companyName || "", pushToken: token || "",
+        createdAt: serverTimestamp()
+      });
       navigation.navigate("Dashboard");
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+      <StatusBar style="dark" />
       <Text style={styles.logo}>{mode === "login" ? "Welcome Back" : "Create Account"}</Text>
       <Text style={styles.tagline}>Enter your details to continue</Text>
       <View style={styles.form}>
-        <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#aaaaaa" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
-        <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#aaaaaa" secureTextEntry value={password} onChangeText={setPassword} />
+        {mode === "signup" && (
+          <>
+            <View style={{flexDirection: "row", gap: 8}}>
+              <TextInput style={[styles.input, {flex: 1}]} placeholder="First Name" placeholderTextColor="#999999" value={firstName} onChangeText={setFirstName} />
+              <TextInput style={[styles.input, {flex: 1}]} placeholder="Last Name" placeholderTextColor="#999999" value={lastName} onChangeText={setLastName} />
+            </View>
+            <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor="#999999" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
+            <TextInput style={styles.input} placeholder="ZIP Code" placeholderTextColor="#999999" keyboardType="numeric" maxLength={5} value={zipCode} onChangeText={setZipCode} />
+            <TextInput style={styles.input} placeholder="Company Name (optional)" placeholderTextColor="#999999" value={companyName} onChangeText={setCompanyName} />
+          </>
+        )}
+        <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#999999" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
+        <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#999999" secureTextEntry value={password} onChangeText={setPassword} />
         {mode === "login" ? (
           <TouchableOpacity style={styles.sellerButton} onPress={handleLogin}>
             <Text style={styles.sellerButtonText}>{loading ? "Loading..." : "Log In"}</Text>
@@ -202,34 +225,79 @@ function LoginScreen({ navigation, route }) {
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 function DashboardScreen({ navigation }) {
+  const [listingCount, setListingCount] = useState(0);
+  const [bidCount, setBidCount] = useState(0);
+  const [myBids, setMyBids] = useState([]);
+  const [userName, setUserName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const user = auth.currentUser;
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const userSnap = await getDocs(query(collection(db, "users"), where("uid", "==", user.uid)));
+        if (!userSnap.empty) setUserName(userSnap.docs[0].data().firstName || "");
+        const listingsSnap = await getDocs(query(collection(db, "listings"), where("sellerId", "==", user.uid)));
+        setListingCount(listingsSnap.size);
+        const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
+        setBidCount(bidsSnap.size);
+        const bidsData = bidsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setMyBids(bidsData.slice(0, 3));
+      } catch(e) {}
+      setLoading(false);
+    };
+    fetchStats();
+  }, []);
+
   const handleLogout = async () => {
     await signOut(auth);
     navigation.navigate("Welcome");
   };
+
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+      <StatusBar style="dark" />
       <View style={styles.dashboardHeader}>
         <Text style={styles.logo}>Salvager26</Text>
         <TouchableOpacity onPress={handleLogout}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.tagline}>What would you like to do?</Text>
-      <View style={styles.buttons}>
-        <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("MyListings")}>
-          <Text style={styles.sellerButtonText}>My Listings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("BrowseCars")}>
-          <Text style={styles.dealerButtonText}>Browse & Bid on Cars</Text>
-        </TouchableOpacity>
+      <Text style={styles.tagline}>Welcome back{userName ? ", " + userName : ""}!</Text>
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{listingCount}</Text>
+          <Text style={styles.statLabel}>My Listings</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{bidCount}</Text>
+          <Text style={styles.statLabel}>Bids Placed</Text>
+        </View>
       </View>
-    </View>
+      <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("MyListings")}>
+        <Text style={styles.sellerButtonText}>My Listings</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("BrowseCars")}>
+        <Text style={styles.dealerButtonText}>Browse & Bid on Cars</Text>
+      </TouchableOpacity>
+      {myBids.length > 0 && (
+        <View>
+          <Text style={styles.sectionLabel}>My Recent Bids</Text>
+          {myBids.map(bid => (
+            <View key={bid.id} style={styles.listingCard}>
+              <Text style={styles.listingTitle}>${bid.amount}</Text>
+              <Text style={styles.listingDetail}>Status: {bid.status === "accepted" ? "Accepted" : "Pending"}</Text>
+              {bid.towingIncluded && <Text style={styles.listingDetail}>Towing included</Text>}
+            </View>
+          ))}
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
@@ -241,7 +309,7 @@ function MyListingsScreen({ navigation }) {
       const user = auth.currentUser;
       const q = query(collection(db, "listings"), where("sellerId", "==", user.uid));
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setListings(data);
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
@@ -294,7 +362,7 @@ function SellerBidsScreen({ route, navigation }) {
       try {
         const q = query(collection(db, "bids"), where("listingId", "==", listing.id));
         const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         data.sort((a, b) => b.amount - a.amount);
         setBids(data);
       } catch (error) { Alert.alert("Error", error.message); }
@@ -347,13 +415,12 @@ function SellerBidsScreen({ route, navigation }) {
           {index === 0 && listing.status !== "sold" && <Text style={styles.highestBadge}>HIGHEST OFFER</Text>}
           {bid.status === "accepted" && <Text style={styles.acceptedBadge}>ACCEPTED</Text>}
           <Text style={styles.bidAmount}>${bid.amount}</Text>
-
           {bid.towingIncluded !== undefined && <Text style={styles.listingDetail}>Towing: {bid.towingIncluded ? "Included in bid" : "Not included"}</Text>}
           {bid.status === "accepted" ? <Text style={styles.listingDetail}>Buyer: {bid.buyerEmail}</Text> : <Text style={styles.listingDetail}>Buyer: Contact hidden until offer accepted</Text>}
           {bid.note ? <Text style={styles.listingDetail}>Note: {bid.note}</Text> : null}
           {listing.status !== "sold" ? (
             <TouchableOpacity style={[styles.acceptButton, bid.status === "accepted" && styles.acceptedButton]} onPress={() => bid.status !== "accepted" && handleAcceptOffer(bid)} disabled={accepting || bid.status === "accepted"}>
-              <Text style={styles.acceptButtonText}>{bid.status === "accepted" ? "Offer Accepted ✓" : accepting ? "Processing..." : "Accept Offer"}</Text>
+              <Text style={styles.acceptButtonText}>{bid.status === "accepted" ? "Offer Accepted" : accepting ? "Processing..." : "Accept Offer"}</Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -378,7 +445,7 @@ function BrowseCarsScreen({ navigation }) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission needed", "Please allow location access to auto-detect your area");
+        Alert.alert("Permission needed", "Please allow location access");
         setLocationLoading(false);
         return;
       }
@@ -404,7 +471,7 @@ function BrowseCarsScreen({ navigation }) {
     return { latitude: parseFloat(data.places[0].latitude), longitude: parseFloat(data.places[0].longitude) };
   };
 
-  const applyRadiusFilter = async (allListings) => {
+  const applyFilter = async (allListings) => {
     if (!zipCode || zipCode.length < 5) {
       setFilteredListings(allListings);
       return;
@@ -417,13 +484,14 @@ function BrowseCarsScreen({ navigation }) {
       const fromYear = yearFrom ? parseInt(yearFrom) : 0;
       const toYear = yearTo ? parseInt(yearTo) : 9999;
       for (const listing of allListings) {
+        const listingYear = parseInt(listing.year) || 0;
+        if (listingYear < fromYear || listingYear > toYear) continue;
         if (!listing.zip) { nearby.push(listing); continue; }
         const listingCoords = await getZipCoords(listing.zip);
         if (!listingCoords) { nearby.push(listing); continue; }
         const distanceMeters = getDistance(userCoords, listingCoords);
         const distanceMiles = distanceMeters / 1609.34;
-        const listingYear = parseInt(listing.year) || 0;
-        if (distanceMiles <= parseFloat(radius) && listingYear >= fromYear && listingYear <= toYear) {
+        if (distanceMiles <= parseFloat(radius)) {
           nearby.push({ ...listing, distanceMiles: Math.round(distanceMiles) });
         }
       }
@@ -436,7 +504,7 @@ function BrowseCarsScreen({ navigation }) {
     const fetchListings = async () => {
       try {
         const snapshot = await getDocs(collection(db, "listings"));
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         const filtered = data.filter(l => l.sellerId !== auth.currentUser.uid && l.status !== "sold");
         setListings(filtered);
         setFilteredListings(filtered);
@@ -445,6 +513,7 @@ function BrowseCarsScreen({ navigation }) {
     };
     fetchListings();
   }, []);
+
   return (
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
       <View style={styles.dashboardHeader}>
@@ -455,9 +524,9 @@ function BrowseCarsScreen({ navigation }) {
       </View>
       <View style={styles.filterContainer}>
         <View style={styles.zipRow}>
-          <TextInput style={[styles.input, styles.zipInput]} placeholder="Your ZIP code" placeholderTextColor="#aaaaaa" keyboardType="numeric" maxLength={5} value={zipCode} onChangeText={setZipCode} />
+          <TextInput style={[styles.input, {flex: 1, marginBottom: 0}]} placeholder="Your ZIP code" placeholderTextColor="#999999" keyboardType="numeric" maxLength={5} value={zipCode} onChangeText={setZipCode} />
           <TouchableOpacity style={styles.locationButton} onPress={detectLocation}>
-            <Text style={styles.locationButtonText}>{locationLoading ? "..." : "📍 Auto"}</Text>
+            <Text style={styles.locationButtonText}>{locationLoading ? "..." : "Auto"}</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.pickerContainer}>
@@ -483,8 +552,8 @@ function BrowseCarsScreen({ navigation }) {
             </Picker>
           </View>
         </View>
-        <TouchableOpacity style={styles.filterButton} onPress={() => applyRadiusFilter(listings)}>
-          <Text style={styles.filterButtonText}>{filtering ? "Filtering..." : "Search"}</Text>
+        <TouchableOpacity style={styles.filterButton} onPress={() => applyFilter(listings)}>
+          <Text style={styles.filterButtonText}>{filtering ? "Searching..." : "Search"}</Text>
         </TouchableOpacity>
       </View>
       {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : filteredListings.length === 0 ? (
@@ -493,19 +562,19 @@ function BrowseCarsScreen({ navigation }) {
           <Text style={styles.emptyStateSubtext}>Try expanding your search radius!</Text>
         </View>
       ) : filteredListings.map(listing => (
-        <TouchableOpacity key={listing.id} style={[styles.listingCard, listing.status === "sold" && styles.soldCard]} onPress={() => listing.status !== "sold" && navigation.navigate("PlaceBid", { listing })}>
+        <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => navigation.navigate("PlaceBid", { listing })}>
           {listing.photos && listing.photos.length > 0 && (
             <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
           )}
           <View style={styles.listingCardHeader}>
             <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}</Text>
-            {listing.status === "sold" && <Text style={styles.soldBadge}>SOLD</Text>}
           </View>
           <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
           <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
-          {listing.runs === false && <Text style={styles.conditionBadge}>Not Running</Text>}
           {listing.distanceMiles !== undefined && <Text style={styles.listingDetail}>{listing.distanceMiles} miles away</Text>}
-          {listing.status !== "sold" && <Text style={styles.bidButton2}>Place Bid →</Text>}
+          {listing.runs === false && <Text style={styles.conditionBadge}>Not Running</Text>}
+          {listing.needsTow === true && <Text style={styles.conditionBadge}>Needs Tow</Text>}
+          <Text style={styles.bidButton2}>Place Bid →</Text>
         </TouchableOpacity>
       ))}
     </ScrollView>
@@ -575,14 +644,13 @@ function PlaceBidScreen({ route, navigation }) {
       </View>
       <View style={styles.formContainer}>
         <Text style={styles.sectionLabel}>Your Offer</Text>
-        <TextInput style={styles.input} placeholder="Bid Amount ($)" placeholderTextColor="#aaaaaa" keyboardType="numeric" value={amount} onChangeText={setAmount} />
-
+        <TextInput style={styles.input} placeholder="Bid Amount ($)" placeholderTextColor="#999999" keyboardType="numeric" value={amount} onChangeText={setAmount} />
         {listing.needsTow && (
           <TouchableOpacity style={[styles.secondaryButton, towingIncluded && styles.activeToggle]} onPress={() => setTowingIncluded(!towingIncluded)}>
-            <Text style={styles.secondaryButtonText}>{towingIncluded ? "Towing Included in Bid" : "Towing NOT Included"}</Text>
+            <Text style={[styles.secondaryButtonText, towingIncluded && {color: "#ffffff"}]}>{towingIncluded ? "Towing Included in Bid" : "Towing NOT Included"}</Text>
           </TouchableOpacity>
         )}
-        <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#aaaaaa" value={note} onChangeText={setNote} />
+        <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
         <TouchableOpacity style={styles.sellerButton} onPress={handleSubmitBid}>
           <Text style={styles.sellerButtonText}>{loading ? "Placing Bid..." : "Submit Bid"}</Text>
         </TouchableOpacity>
@@ -614,13 +682,13 @@ function CreateListingScreen({ navigation }) {
     Alert.alert("Add Photo", "Choose an option", [
       { text: "Take Photo", onPress: async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== "granted") { Alert.alert("Permission needed", "Please allow camera access in Settings"); return; }
+        if (status !== "granted") { Alert.alert("Permission needed"); return; }
         const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.7 });
         if (!result.canceled) setPhotos([...photos, result.assets[0].uri]);
       }},
       { text: "Choose from Library", onPress: async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") { Alert.alert("Permission needed", "Please allow photo access in Settings"); return; }
+        if (status !== "granted") { Alert.alert("Permission needed"); return; }
         const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, quality: 0.7 });
         if (!result.canceled) setPhotos([...photos, result.assets[0].uri]);
       }},
@@ -696,11 +764,11 @@ function CreateListingScreen({ navigation }) {
             </Picker>
           </View>
         </View>
-        <TextInput style={styles.input} placeholder="Mileage" placeholderTextColor="#aaaaaa" keyboardType="numeric" value={mileage} onChangeText={setMileage} />
+        <TextInput style={styles.input} placeholder="Mileage" placeholderTextColor="#999999" keyboardType="numeric" value={mileage} onChangeText={setMileage} />
         <Text style={styles.sectionLabel}>Location</Text>
         <View style={{flexDirection: "row", gap: 8}}>
-          <TextInput style={[styles.input, {flex: 2}]} placeholder="City" placeholderTextColor="#aaaaaa" value={city} onChangeText={setCity} />
-          <TextInput style={[styles.input, {flex: 1}]} placeholder="ZIP" placeholderTextColor="#aaaaaa" keyboardType="numeric" value={zip} onChangeText={setZip} />
+          <TextInput style={[styles.input, {flex: 2}]} placeholder="City" placeholderTextColor="#999999" value={city} onChangeText={setCity} />
+          <TextInput style={[styles.input, {flex: 1}]} placeholder="ZIP" placeholderTextColor="#999999" keyboardType="numeric" value={zip} onChangeText={setZip} />
         </View>
         <Text style={styles.sectionLabel}>Condition - tap to toggle</Text>
         <View style={styles.toggleRow}>
@@ -720,7 +788,7 @@ function CreateListingScreen({ navigation }) {
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Notes</Text>
-        <TextInput style={[styles.input, styles.textArea]} placeholder="Describe the condition, any issues, etc." placeholderTextColor="#aaaaaa" multiline numberOfLines={4} value={notes} onChangeText={setNotes} />
+        <TextInput style={[styles.input, styles.textArea]} placeholder="Describe the condition, any issues, etc." placeholderTextColor="#999999" multiline numberOfLines={4} value={notes} onChangeText={setNotes} />
         <Text style={styles.sectionLabel}>Photos ({photos.length}/8)</Text>
         <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
           <Text style={styles.photoButtonText}>+ Add Photo</Text>
@@ -752,7 +820,7 @@ const styles = StyleSheet.create({
   tagline: { fontSize: 16, color: "#555555", textAlign: "center", marginBottom: 40 },
   form: { width: "100%", gap: 16 },
   formContainer: { gap: 16 },
-  input: { backgroundColor: "#f0f0f0", color: "#ffffff", padding: 16, borderRadius: 12, fontSize: 16, width: "100%" },
+  input: { backgroundColor: "#ffffff", color: "#1a1a1a", padding: 16, borderRadius: 12, fontSize: 16, width: "100%", borderWidth: 1, borderColor: "#dddddd" },
   textArea: { height: 120, textAlignVertical: "top" },
   buttons: { width: "100%", gap: 16 },
   sellerButton: { backgroundColor: "#c0392b", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 16 },
@@ -761,7 +829,7 @@ const styles = StyleSheet.create({
   dealerButtonText: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
   secondaryButton: { borderWidth: 1, borderColor: "#1a3a6b", padding: 18, borderRadius: 12, alignItems: "center" },
   secondaryButtonText: { color: "#1a3a6b", fontSize: 18 },
-  activeToggle: { backgroundColor: "#e94560", borderColor: "#e94560" },
+  activeToggle: { backgroundColor: "#c0392b", borderColor: "#c0392b" },
   backText: { color: "#555555", textAlign: "center", fontSize: 16, marginTop: 8 },
   dashboardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 60, marginBottom: 24 },
   dashboardTitle: { fontSize: 30, fontWeight: "bold", color: "#1a3a6b" },
@@ -770,7 +838,11 @@ const styles = StyleSheet.create({
   emptyStateText: { color: "#1a1a1a", fontSize: 18, fontWeight: "bold", marginBottom: 8 },
   emptyStateSubtext: { color: "#555555", fontSize: 14 },
   sectionLabel: { color: "#1a3a6b", fontSize: 14, fontWeight: "bold", marginTop: 8, textTransform: "uppercase" },
-  listingCard: { backgroundColor: "#f0f0f0", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
+  statsRow: { flexDirection: "row", gap: 16, marginBottom: 24 },
+  statCard: { flex: 1, backgroundColor: "#ffffff", borderRadius: 16, padding: 16, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, borderWidth: 1, borderColor: "#eeeeee" },
+  statNumber: { fontSize: 36, fontWeight: "bold", color: "#c0392b" },
+  statLabel: { fontSize: 14, color: "#555555", marginTop: 4 },
+  listingCard: { backgroundColor: "#ffffff", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, borderWidth: 1, borderColor: "#eeeeee" },
   listingCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   listingTitle: { color: "#1a1a1a", fontSize: 18, fontWeight: "bold" },
   listingDetail: { color: "#555555", fontSize: 14, marginBottom: 4 },
@@ -780,8 +852,8 @@ const styles = StyleSheet.create({
   bidButton2: { color: "#c0392b", fontSize: 14, marginTop: 8, fontWeight: "bold" },
   soldCard: { opacity: 0.7, borderWidth: 1, borderColor: "#2ecc71" },
   soldBadge: { color: "#2ecc71", fontSize: 12, fontWeight: "bold" },
-  conditionBadge: { color: "#e94560", fontSize: 12, fontWeight: "bold", marginTop: 4 },
-  bidCard: { backgroundColor: "#f0f0f0", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
+  conditionBadge: { color: "#c0392b", fontSize: 12, fontWeight: "bold", marginTop: 4 },
+  bidCard: { backgroundColor: "#ffffff", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, borderWidth: 1, borderColor: "#eeeeee" },
   acceptedCard: { borderWidth: 2, borderColor: "#2ecc71" },
   bidAmount: { color: "#1a1a1a", fontSize: 24, fontWeight: "bold", marginBottom: 8 },
   highestBadge: { color: "#c0392b", fontSize: 12, fontWeight: "bold", marginBottom: 8 },
@@ -789,27 +861,26 @@ const styles = StyleSheet.create({
   acceptButton: { backgroundColor: "#2ecc71", padding: 12, borderRadius: 8, alignItems: "center", marginTop: 12 },
   acceptedButton: { backgroundColor: "#888888" },
   acceptButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "bold" },
-  pickerContainer: { backgroundColor: "#ffffff", borderRadius: 12, marginBottom: 4, height: 58, overflow: "hidden", justifyContent: "center" },
+  pickerContainer: { backgroundColor: "#ffffff", borderRadius: 12, marginBottom: 4, height: 58, overflow: "hidden", justifyContent: "center", borderWidth: 1, borderColor: "#dddddd" },
   pickerRow: { flexDirection: "row", gap: 8 },
   pickerHalf: { flex: 1 },
-  picker: { color: "#000000", fontSize: 18, fontWeight: "bold" },
+  picker: { color: "#000000" },
   toggleRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
-  toggleButton: { flex: 1, padding: 14, borderRadius: 12, alignItems: "center", backgroundColor: "#f0f0f0", borderWidth: 1, borderColor: "#5a5a8e" },
+  toggleButton: { flex: 1, padding: 14, borderRadius: 12, alignItems: "center", backgroundColor: "#f0f0f0", borderWidth: 1, borderColor: "#dddddd" },
   toggleActive: { backgroundColor: "#2ecc71", borderColor: "#2ecc71" },
-  toggleActiveRed: { backgroundColor: "#e94560", borderColor: "#e94560" },
+  toggleActiveRed: { backgroundColor: "#c0392b", borderColor: "#c0392b" },
   toggleText: { color: "#1a1a1a", fontSize: 14, fontWeight: "bold" },
-  photoButton: { backgroundColor: "#f0f0f0", borderRadius: 12, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#5a5a8e", marginBottom: 8 },
+  photoButton: { backgroundColor: "#ffffff", borderRadius: 12, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#1a3a6b", marginBottom: 8 },
   photoButtonText: { color: "#1a3a6b", fontSize: 16 },
   photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
   photoWrapper: { position: "relative" },
   photoThumb: { width: 90, height: 90, borderRadius: 10 },
-  removePhoto: { position: "absolute", top: -8, right: -8, backgroundColor: "#e94560", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" },
+  removePhoto: { position: "absolute", top: -8, right: -8, backgroundColor: "#c0392b", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" },
   removePhotoText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
   filterContainer: { gap: 8, marginBottom: 16 },
-  zipInput: { flex: 1, marginBottom: 0 },
   filterButton: { backgroundColor: "#c0392b", padding: 14, borderRadius: 12, alignItems: "center" },
   filterButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "bold" },
   zipRow: { flexDirection: "row", gap: 8, alignItems: "center" },
-  locationButton: { backgroundColor: "#f0f0f0", padding: 14, borderRadius: 12, justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "#5a5a8e", minWidth: 80 },
+  locationButton: { backgroundColor: "#1a3a6b", padding: 14, borderRadius: 12, justifyContent: "center", alignItems: "center", minWidth: 80 },
   locationButtonText: { color: "#ffffff", fontSize: 14, fontWeight: "bold" },
 });
