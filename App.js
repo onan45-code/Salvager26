@@ -247,7 +247,14 @@ function DashboardScreen({ navigation }) {
         const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
         setBidCount(bidsSnap.size);
         const bidsData = bidsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setMyBids(bidsData.slice(0, 3));
+        const bidsWithListings = await Promise.all(bidsData.slice(0, 3).map(async bid => {
+          try {
+            const listingSnap = await getDocs(query(collection(db, "listings"), where("__name__", "==", bid.listingId)));
+            const listing = listingSnap.empty ? null : listingSnap.docs[0].data();
+            return { ...bid, listingInfo: listing };
+          } catch(e) { return bid; }
+        }));
+        setMyBids(bidsWithListings);
       } catch(e) {}
       setLoading(false);
     };
@@ -290,7 +297,8 @@ function DashboardScreen({ navigation }) {
           <Text style={styles.sectionLabel}>My Recent Bids</Text>
           {myBids.map(bid => (
             <View key={bid.id} style={styles.listingCard}>
-              <Text style={styles.listingTitle}>${bid.amount}</Text>
+              <Text style={styles.listingTitle}>{bid.listingInfo ? bid.listingInfo.year + " " + bid.listingInfo.make + " " + bid.listingInfo.model : "Vehicle"}</Text>
+              <Text style={styles.listingDetail}>Your bid: ${bid.amount}</Text>
               <Text style={styles.listingDetail}>Status: {bid.status === "accepted" ? "Accepted" : "Pending"}</Text>
               {bid.towingIncluded && <Text style={styles.listingDetail}>Towing included</Text>}
             </View>
@@ -439,6 +447,7 @@ function BrowseCarsScreen({ navigation }) {
   const [yearFrom, setYearFrom] = useState("");
   const [yearTo, setYearTo] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
+  const [myBidListingIds, setMyBidListingIds] = useState([]);
 
   const detectLocation = async () => {
     setLocationLoading(true);
@@ -506,6 +515,8 @@ function BrowseCarsScreen({ navigation }) {
         const snapshot = await getDocs(collection(db, "listings"));
         const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         const filtered = data.filter(l => l.sellerId !== auth.currentUser.uid && l.status !== "sold");
+        const myBidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", auth.currentUser.uid)));
+        setMyBidListingIds(myBidsSnap.docs.map(d => d.data().listingId));
         setListings(filtered);
         setFilteredListings(filtered);
       } catch (error) { Alert.alert("Error", error.message); }
@@ -574,7 +585,7 @@ function BrowseCarsScreen({ navigation }) {
           {listing.distanceMiles !== undefined && <Text style={styles.listingDetail}>{listing.distanceMiles} miles away</Text>}
           {listing.runs === false && <Text style={styles.conditionBadge}>Not Running</Text>}
           {listing.needsTow === true && <Text style={styles.conditionBadge}>Needs Tow</Text>}
-          <Text style={styles.bidButton2}>Place Bid →</Text>
+          {myBidListingIds.includes(listing.id) ? <Text style={{color: "#2ecc71", fontSize: 14, marginTop: 8, fontWeight: "bold"}}>You bid on this ✓</Text> : <Text style={styles.bidButton2}>Place Bid →</Text>}
         </TouchableOpacity>
       ))}
     </ScrollView>
