@@ -133,8 +133,7 @@ function WelcomeScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <Text style={styles.logo}>Salvager26</Text>
-        <Text style={styles.tagline}>Buy and sell salvage cars fast.</Text>
+        <Image source={require("./assets/logo.png")} style={{width: 280, height: 280, resizeMode: "contain"}} />
       </View>
       <View style={styles.buttons}>
         <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("Login", { mode: "login" })}>
@@ -157,6 +156,9 @@ function LoginScreen({ navigation, route }) {
   const [phone, setPhone] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -177,6 +179,10 @@ function LoginScreen({ navigation, route }) {
   const handleSignUp = async () => {
     if (!email || !password || !firstName || !lastName || !phone || !zipCode) {
       Alert.alert("Error", "Please fill in all required fields");
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
       return;
     }
     setLoading(true);
@@ -211,7 +217,18 @@ function LoginScreen({ navigation, route }) {
           </>
         )}
         <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#999999" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
-        <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#999999" secureTextEntry value={password} onChangeText={setPassword} />
+        <View style={styles.passwordRow}>
+          <TextInput style={[styles.input, {flex: 1, marginBottom: 0}]} placeholder="Password" placeholderTextColor="#999999" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
+          <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(!showPassword)}>
+            <Text style={styles.eyeText}>{showPassword ? "Hide" : "Show"}</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.passwordRow}>
+          <TextInput style={[styles.input, {flex: 1, marginBottom: 0}]} placeholder="Confirm Password" placeholderTextColor="#999999" secureTextEntry={!showConfirmPassword} value={confirmPassword} onChangeText={setConfirmPassword} />
+          <TouchableOpacity style={styles.eyeButton} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+            <Text style={styles.eyeText}>{showConfirmPassword ? "Hide" : "Show"}</Text>
+          </TouchableOpacity>
+        </View>
         {mode === "login" ? (
           <TouchableOpacity style={styles.sellerButton} onPress={handleLogin}>
             <Text style={styles.sellerButtonText}>{loading ? "Loading..." : "Log In"}</Text>
@@ -889,6 +906,9 @@ const styles = StyleSheet.create({
   removePhoto: { position: "absolute", top: -8, right: -8, backgroundColor: "#c0392b", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" },
   removePhotoText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
   filterContainer: { gap: 8, marginBottom: 16 },
+  passwordRow: { flexDirection: "row", gap: 8, alignItems: "center", marginBottom: 8 },
+  eyeButton: { backgroundColor: "#ffffff", padding: 16, borderRadius: 12, borderWidth: 1, borderColor: "#dddddd", justifyContent: "center" },
+  eyeText: { color: "#1a3a6b", fontSize: 14, fontWeight: "bold" },
   passwordRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   eyeButton: { backgroundColor: "#ffffff", padding: 16, borderRadius: 12, borderWidth: 1, borderColor: "#dddddd", justifyContent: "center" },
   eyeText: { color: "#1a3a6b", fontSize: 14, fontWeight: "bold" },
