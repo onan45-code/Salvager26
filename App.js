@@ -317,7 +317,7 @@ function DashboardScreen({ navigation }) {
       </TouchableOpacity>
       {myListings.length > 0 && (
         <View>
-          <Text style={styles.sectionLabel}>My Active Listings</Text>
+          <Text style={{color: "#1a3a6b", fontSize: 18, fontWeight: "bold", textAlign: "center", marginTop: 24, marginBottom: 8}}>My Active Listings</Text>
           {myListings.map(listing => (
             <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => navigation.navigate("SellerBids", { listing })}>
               {listing.photos && listing.photos.length > 0 && (
