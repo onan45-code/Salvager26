@@ -223,12 +223,14 @@ function LoginScreen({ navigation, route }) {
             <Text style={styles.eyeText}>{showPassword ? "Hide" : "Show"}</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.passwordRow}>
-          <TextInput style={[styles.input, {flex: 1, marginBottom: 0}]} placeholder="Confirm Password" placeholderTextColor="#999999" secureTextEntry={!showConfirmPassword} value={confirmPassword} onChangeText={setConfirmPassword} />
-          <TouchableOpacity style={styles.eyeButton} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-            <Text style={styles.eyeText}>{showConfirmPassword ? "Hide" : "Show"}</Text>
-          </TouchableOpacity>
-        </View>
+        {mode === "signup" && (
+          <View style={styles.passwordRow}>
+            <TextInput style={[styles.input, {flex: 1, marginBottom: 0}]} placeholder="Confirm Password" placeholderTextColor="#999999" secureTextEntry={!showConfirmPassword} value={confirmPassword} onChangeText={setConfirmPassword} />
+            <TouchableOpacity style={styles.eyeButton} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+              <Text style={styles.eyeText}>{showConfirmPassword ? "Hide" : "Show"}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         {mode === "login" ? (
           <TouchableOpacity style={styles.sellerButton} onPress={handleLogin}>
             <Text style={styles.sellerButtonText}>{loading ? "Loading..." : "Log In"}</Text>
