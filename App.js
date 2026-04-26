@@ -256,6 +256,8 @@ function DashboardScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const user = auth.currentUser;
 
+  const [myListings, setMyListings] = useState([]);
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -263,6 +265,8 @@ function DashboardScreen({ navigation }) {
         if (!userSnap.empty) setUserName(userSnap.docs[0].data().firstName || "");
         const listingsSnap = await getDocs(query(collection(db, "listings"), where("sellerId", "==", user.uid)));
         setListingCount(listingsSnap.size);
+        const listingsData = listingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setMyListings(listingsData.filter(l => l.status !== "sold"));
         const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
         setBidCount(bidsSnap.size);
         const bidsData = bidsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -305,12 +309,30 @@ function DashboardScreen({ navigation }) {
           <Text style={styles.statLabel}>Bids Placed</Text>
         </View>
       </View>
-      <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("MyListings")}>
-        <Text style={styles.sellerButtonText}>My Listings</Text>
+      <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("CreateListing")}>
+        <Text style={styles.sellerButtonText}>+ List a Car</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("BrowseCars")}>
         <Text style={styles.dealerButtonText}>Browse & Bid on Cars</Text>
       </TouchableOpacity>
+      {myListings.length > 0 && (
+        <View>
+          <Text style={styles.sectionLabel}>My Active Listings</Text>
+          {myListings.map(listing => (
+            <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => navigation.navigate("SellerBids", { listing })}>
+              {listing.photos && listing.photos.length > 0 && (
+                <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
+              )}
+              <View style={styles.listingCardHeader}>
+                <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}</Text>
+              </View>
+              <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
+              <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
+              <Text style={styles.viewBidsText}>View Bids →</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
       {myBids.length > 0 && (
         <View>
           <Text style={styles.sectionLabel}>My Recent Bids</Text>
