@@ -594,13 +594,13 @@ function BrowseCarsScreen({ navigation }) {
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
             <Picker selectedValue={yearFrom} onValueChange={(val) => setYearFrom(val)} style={styles.picker}>
               <Picker.Item label="From Year" value="" />
-              {Array.from({length: 46}, (_, i) => (2025 - i).toString()).map(y => <Picker.Item key={y} label={y} value={y} />)}
+              {Array.from({length: 36}, (_, i) => (1990 + i).toString()).map(y => <Picker.Item key={y} label={y} value={y} />)}
             </Picker>
           </View>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
             <Picker selectedValue={yearTo} onValueChange={(val) => setYearTo(val)} style={styles.picker}>
               <Picker.Item label="To Year" value="" />
-              {Array.from({length: 46}, (_, i) => (2025 - i).toString()).map(y => <Picker.Item key={y} label={y} value={y} />)}
+              {Array.from({length: 36}, (_, i) => (1990 + i).toString()).map(y => <Picker.Item key={y} label={y} value={y} />)}
             </Picker>
           </View>
         </View>
@@ -712,9 +712,9 @@ function PlaceBidScreen({ route, navigation }) {
 }
 
 function CreateListingScreen({ navigation }) {
-  const years = Array.from({length: 46}, (_, i) => (2025 - i).toString());
+  const years = Array.from({length: 36}, (_, i) => (1990 + i).toString());
   const makes = Object.keys(CAR_DATA).sort();
-  const [year, setYear] = useState("2025");
+  const [year, setYear] = useState("1990");
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [trim, setTrim] = useState("");
