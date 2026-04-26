@@ -324,7 +324,7 @@ function DashboardScreen({ navigation }) {
                 <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
               )}
               <View style={styles.listingCardHeader}>
-                <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}</Text>
+                <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
               </View>
               <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
               <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
@@ -389,7 +389,7 @@ function MyListingsScreen({ navigation }) {
             <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
           )}
           <View style={styles.listingCardHeader}>
-            <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}</Text>
+            <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
             {listing.status === "sold" && <Text style={styles.soldBadge}>SOLD</Text>}
           </View>
           <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
@@ -449,7 +449,7 @@ function SellerBidsScreen({ route, navigation }) {
             ))}
           </ScrollView>
         )}
-        <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}</Text>
+        <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
         <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
         <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
         {listing.status === "sold" && <Text style={styles.soldBadge}>SOLD - ${listing.soldPrice}</Text>}
@@ -619,7 +619,7 @@ function BrowseCarsScreen({ navigation }) {
             <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
           )}
           <View style={styles.listingCardHeader}>
-            <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}</Text>
+            <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
           </View>
           <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
           <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
@@ -686,7 +686,7 @@ function PlaceBidScreen({ route, navigation }) {
             ))}
           </ScrollView>
         )}
-        <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}</Text>
+        <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
         <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
         <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
         {listing.notes ? <Text style={styles.listingDetail}>{listing.notes}</Text> : null}
