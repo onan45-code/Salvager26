@@ -124,6 +124,8 @@ export default function App() {
         <Stack.Screen name="PlaceBid" component={PlaceBidScreen} />
         <Stack.Screen name="CreateListing" component={CreateListingScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="EditListing" component={EditListingScreen} />
+        <Stack.Screen name="MyBid" component={MyBidScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -294,7 +296,7 @@ function DashboardScreen({ navigation }) {
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
       <StatusBar style="dark" />
       <View style={styles.dashboardHeader}>
-        <Text style={styles.logo}>Salvager26</Text>
+        <Text style={styles.logo}>Salvager</Text>
         <TouchableOpacity onPress={handleLogout}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
@@ -363,7 +365,7 @@ function MyListingsScreen({ navigation }) {
       const user = auth.currentUser;
       const q = query(collection(db, "listings"), where("sellerId", "==", user.uid));
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.status !== "deleted");
       setListings(data);
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
@@ -415,6 +417,23 @@ function SellerBidsScreen({ route, navigation }) {
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteListing = async () => {
+    Alert.alert("Delete Listing", "Are you sure you want to delete this listing?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: async () => {
+        setDeleting(true);
+        try {
+          await updateDoc(doc(db, "listings", listing.id), { status: "deleted" });
+          Alert.alert("Deleted", "Your listing has been removed.");
+          navigation.goBack();
+        } catch(e) { Alert.alert("Error", e.message); }
+        setDeleting(false);
+      }}
+    ]);
+  };
+
   useEffect(() => {
     const fetchBids = async () => {
       try {
@@ -446,9 +465,17 @@ function SellerBidsScreen({ route, navigation }) {
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>Bids</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.logoutText}>Back</Text>
-        </TouchableOpacity>
+        <View style={{flexDirection: "row", gap: 16}}>
+          {listing.status !== "sold" && <TouchableOpacity onPress={() => navigation.navigate("EditListing", { listing })}>
+            <Text style={{color: "#1a3a6b", fontSize: 20, fontWeight: "bold"}}>Edit</Text>
+          </TouchableOpacity>}
+          {listing.status !== "sold" && <TouchableOpacity onPress={handleDeleteListing}>
+            <Text style={{color: "#c0392b", fontSize: 20, fontWeight: "bold"}}>Delete</Text>
+          </TouchableOpacity>}
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.logoutText}>Back</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={styles.listingCard}>
         {listing.photos && listing.photos.length > 0 && (
@@ -515,7 +542,8 @@ function BrowseCarsScreen({ navigation }) {
       });
       if (geocode && geocode[0] && geocode[0].postalCode) {
         setZipCode(geocode[0].postalCode);
-        Alert.alert("Location detected!", "ZIP code set to " + geocode[0].postalCode);
+        setZipCode(geocode[0].postalCode);
+        await applyFilter(listings);
       }
     } catch(e) {
       Alert.alert("Error", "Could not detect location. Please enter ZIP manually.");
@@ -623,7 +651,7 @@ function BrowseCarsScreen({ navigation }) {
           <Text style={styles.emptyStateSubtext}>Try expanding your search radius!</Text>
         </View>
       ) : filteredListings.map(listing => (
-        <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => navigation.navigate("PlaceBid", { listing })}>
+        <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => myBidListingIds.includes(listing.id) ? navigation.navigate("MyBid", { listing }) : navigation.navigate("PlaceBid", { listing })}>
           {listing.photos && listing.photos.length > 0 && (
             <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
           )}
@@ -1041,6 +1069,154 @@ function ProfileScreen({ navigation }) {
   );
 }
 
+function MyBidScreen({ route, navigation }) {
+  const { listing } = route.params;
+  const [myBid, setMyBid] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [amount, setAmount] = useState("");
+  const [towingIncluded, setTowingIncluded] = useState(false);
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const user = auth.currentUser;
+
+  useEffect(() => {
+    const fetchMyBid = async () => {
+      try {
+        const snap = await getDocs(query(collection(db, "bids"), where("listingId", "==", listing.id), where("buyerId", "==", user.uid)));
+        if (!snap.empty) {
+          const bidData = { id: snap.docs[0].id, ...snap.docs[0].data() };
+          setMyBid(bidData);
+          setAmount(bidData.amount.toString());
+          setTowingIncluded(bidData.towingIncluded || false);
+          setNote(bidData.note || "");
+        }
+      } catch(e) {}
+      setLoading(false);
+    };
+    fetchMyBid();
+  }, []);
+
+  const handleRaiseBid = async () => {
+    if (!amount) { Alert.alert("Error", "Please enter a bid amount"); return; }
+    if (parseFloat(amount) <= (myBid?.amount || 0)) {
+      Alert.alert("Error", "New bid must be higher than your current bid of $" + myBid.amount);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await updateDoc(doc(db, "bids", myBid.id), { amount: parseFloat(amount), towingIncluded, note });
+      Alert.alert("Success", "Your bid has been updated!");
+      navigation.goBack();
+    } catch(e) { Alert.alert("Error", e.message); }
+    setSubmitting(false);
+  };
+
+  if (loading) return (
+    <View style={styles.container}>
+      <Text style={styles.emptyStateText}>Loading...</Text>
+    </View>
+  );
+
+  return (
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.dashboardHeader}>
+        <Text style={styles.dashboardTitle}>My Bid</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.logoutText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.listingCard}>
+        {listing.photos && listing.photos.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+            {listing.photos.map((uri, i) => (
+              <Image key={i} source={{ uri }} style={styles.bidListingPhoto} />
+            ))}
+          </ScrollView>
+        )}
+        <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model} {listing.trim}</Text>
+        <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
+        <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
+        {listing.runs === false && <Text style={styles.conditionBadge}>Not Running</Text>}
+        {listing.needsTow === true && <Text style={styles.conditionBadge}>Needs Tow</Text>}
+        {listing.titleStatus && <Text style={styles.listingDetail}>Title: {listing.titleStatus}</Text>}
+        {listing.engineStatus && <Text style={styles.listingDetail}>Engine: {listing.engineStatus}</Text>}
+        {listing.damage && <Text style={styles.listingDetail}>Damage: {listing.damage}</Text>}
+        {listing.notes ? <Text style={styles.listingDetail}>Notes: {listing.notes}</Text> : null}
+      </View>
+      {myBid && (
+        <View style={styles.listingCard}>
+          <Text style={styles.sectionLabel}>Your Current Bid</Text>
+          <Text style={styles.bidAmount}>${myBid.amount}</Text>
+          <Text style={styles.listingDetail}>Status: {myBid.status === "accepted" ? "Accepted" : "Pending"}</Text>
+          {myBid.towingIncluded && <Text style={styles.listingDetail}>Towing included in bid</Text>}
+          {myBid.note ? <Text style={styles.listingDetail}>Note: {myBid.note}</Text> : null}
+        </View>
+      )}
+      {myBid && myBid.status !== "accepted" && (
+        <View style={styles.formContainer}>
+          <Text style={styles.sectionLabel}>Raise Your Bid</Text>
+          <TextInput style={styles.input} placeholder="New Bid Amount ($)" placeholderTextColor="#999999" keyboardType="numeric" value={amount} onChangeText={setAmount} />
+          {listing.needsTow && (
+            <TouchableOpacity style={[styles.secondaryButton, towingIncluded && styles.activeToggle]} onPress={() => setTowingIncluded(!towingIncluded)}>
+              <Text style={[styles.secondaryButtonText, towingIncluded && {color: "#ffffff"}]}>{towingIncluded ? "Towing Included" : "Towing NOT Included"}</Text>
+            </TouchableOpacity>
+          )}
+          <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
+          <TouchableOpacity style={styles.sellerButton} onPress={handleRaiseBid}>
+            <Text style={styles.sellerButtonText}>{submitting ? "Updating..." : "Update Bid"}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </ScrollView>
+  );
+}
+
+function EditListingScreen({ route, navigation }) {
+  const { listing } = route.params;
+  const [mileage, setMileage] = useState(listing.mileage || "");
+  const [city, setCity] = useState(listing.city || "");
+  const [zip, setZip] = useState(listing.zip || "");
+  const [notes, setNotes] = useState(listing.notes || "");
+  const [loading, setLoading] = useState(false);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await updateDoc(doc(db, "listings", listing.id), { mileage, city, zip, notes });
+      Alert.alert("Success", "Listing updated!");
+      navigation.goBack();
+    } catch(e) { Alert.alert("Error", e.message); }
+    setLoading(false);
+  };
+
+  return (
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.dashboardHeader}>
+        <Text style={styles.dashboardTitle}>Edit Listing</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.logoutText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.formContainer}>
+        <Text style={styles.sectionLabel}>Vehicle</Text>
+        <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model} {listing.trim}</Text>
+        <Text style={styles.sectionLabel}>Mileage</Text>
+        <TextInput style={styles.input} placeholder="Mileage" placeholderTextColor="#999999" keyboardType="numeric" value={mileage} onChangeText={setMileage} />
+        <Text style={styles.sectionLabel}>Location</Text>
+        <View style={{flexDirection: "row", gap: 8}}>
+          <TextInput style={[styles.input, {flex: 2}]} placeholder="City" placeholderTextColor="#999999" value={city} onChangeText={setCity} />
+          <TextInput style={[styles.input, {flex: 1}]} placeholder="ZIP" placeholderTextColor="#999999" keyboardType="numeric" value={zip} onChangeText={setZip} />
+        </View>
+        <Text style={styles.sectionLabel}>Notes</Text>
+        <TextInput style={[styles.input, styles.textArea]} placeholder="Describe the condition, any issues, etc." placeholderTextColor="#999999" multiline numberOfLines={4} value={notes} onChangeText={setNotes} />
+        <TouchableOpacity style={styles.sellerButton} onPress={handleSave}>
+          <Text style={styles.sellerButtonText}>{loading ? "Saving..." : "Save Changes"}</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f5f5", alignItems: "center", justifyContent: "center", padding: 24 },
   scrollContainer: { flex: 1, backgroundColor: "#f5f5f5", padding: 24 },
@@ -1063,7 +1239,7 @@ const styles = StyleSheet.create({
   backText: { color: "#555555", textAlign: "center", fontSize: 16, marginTop: 8 },
   dashboardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 60, marginBottom: 24 },
   dashboardTitle: { fontSize: 30, fontWeight: "bold", color: "#1a3a6b" },
-  logoutText: { color: "#c0392b", fontSize: 16 },
+  logoutText: { color: "#c0392b", fontSize: 20, fontWeight: "bold" },
   emptyState: { alignItems: "center", marginTop: 60 },
   emptyStateText: { color: "#1a1a1a", fontSize: 18, fontWeight: "bold", marginBottom: 8 },
   emptyStateSubtext: { color: "#555555", fontSize: 14 },
