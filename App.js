@@ -845,7 +845,7 @@ function CreateListingScreen({ navigation }) {
             <Text style={styles.toggleText}>{hasTitle ? "Drivable" : "Not Drivable"}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.toggleButton, needsTow ? styles.toggleActiveRed : styles.toggleActive]} onPress={() => setNeedsTow(!needsTow)}>
-            <Text style={styles.toggleText}>{needsTow ? "Needs Tow" : "Will Deliver"}</Text>
+            <Text style={styles.toggleText}>{needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Notes</Text>
