@@ -905,8 +905,9 @@ function CreateListingScreen({ navigation }) {
             <Text style={styles.toggleText}>Missing 1 or more</Text>
           </TouchableOpacity>
         </View>
+        <Text style={{color: "#1a3a6b", fontSize: 16, fontWeight: "bold", marginTop: 8, textTransform: "uppercase"}}>Vehicle Delivery</Text>
         <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, needsTow ? styles.toggleActiveRed : styles.toggleActive]} onPress={() => setNeedsTow(!needsTow)}>
+          <TouchableOpacity style={[styles.toggleButton, {paddingVertical: 18}, needsTow ? styles.toggleActiveRed : styles.toggleActive]} onPress={() => setNeedsTow(!needsTow)}>
             <Text style={styles.toggleText}>{needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
           </TouchableOpacity>
         </View>
