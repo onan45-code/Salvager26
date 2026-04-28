@@ -911,14 +911,21 @@ function CreateListingScreen({ navigation }) {
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Damage Level</Text>
-        <View style={styles.pickerContainer}>
-          <Picker selectedValue={damage} onValueChange={(val) => setDamage(val)} style={styles.picker}>
-            <Picker.Item label="Select Damage Level" value="" />
-            <Picker.Item label="No Damage" value="none" />
-            <Picker.Item label="Minor Damage" value="minor" />
-            <Picker.Item label="Moderate Damage" value="moderate" />
-            <Picker.Item label="Major Damage" value="major" />
-          </Picker>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, damage === "none" && styles.toggleActive]} onPress={() => setDamage("none")}>
+            <Text style={styles.toggleText}>No Damage</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, damage === "minor" && styles.toggleYellow]} onPress={() => setDamage("minor")}>
+            <Text style={styles.toggleText}>Minor</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, damage === "moderate" && styles.toggleOrange]} onPress={() => setDamage("moderate")}>
+            <Text style={styles.toggleText}>Moderate</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, damage === "major" && styles.toggleActiveRed]} onPress={() => setDamage("major")}>
+            <Text style={styles.toggleText}>Major Damage</Text>
+          </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Notes</Text>
         <TextInput style={[styles.input, styles.textArea]} placeholder="Describe the condition, any issues, etc." placeholderTextColor="#999999" multiline numberOfLines={4} value={notes} onChangeText={setNotes} />
@@ -1092,6 +1099,7 @@ const styles = StyleSheet.create({
   toggleActive: { backgroundColor: "#2ecc71", borderColor: "#2ecc71" },
   toggleActiveRed: { backgroundColor: "#c0392b", borderColor: "#c0392b" },
   toggleOrange: { backgroundColor: "#e67e22", borderColor: "#e67e22" },
+  toggleYellow: { backgroundColor: "#f1c40f", borderColor: "#f1c40f" },
   toggleText: { color: "#1a1a1a", fontSize: 14, fontWeight: "bold" },
   photoButton: { backgroundColor: "#ffffff", borderRadius: 12, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#1a3a6b", marginBottom: 8 },
   photoButtonText: { color: "#1a3a6b", fontSize: 16 },

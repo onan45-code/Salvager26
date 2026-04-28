@@ -2,117 +2,43 @@ f = open('App.js', 'r')
 content = f.read()
 f.close()
 
-# Add new states
-content = content.replace(
-    '  const [needsTow, setNeedsTow] = useState(false);\n  const [damage, setDamage] = useState("");',
-    '  const [needsTow, setNeedsTow] = useState(false);\n  const [damage, setDamage] = useState("");\n  const [titleStatus, setTitleStatus] = useState("");\n  const [engineStatus, setEngineStatus] = useState("");\n  const [transStatus, setTransStatus] = useState("");\n  const [airbags, setAirbags] = useState("");\n  const [tires, setTires] = useState("");'
-)
+old = """        <Text style={styles.sectionLabel}>Damage Level</Text>
+        <View style={styles.pickerContainer}>
+          <Picker selectedValue={damage} onValueChange={(val) => setDamage(val)} style={styles.picker}>
+            <Picker.Item label="Select Damage Level" value="" />
+            <Picker.Item label="No Damage" value="none" />
+            <Picker.Item label="Minor Damage" value="minor" />
+            <Picker.Item label="Moderate Damage" value="moderate" />
+            <Picker.Item label="Major Damage" value="major" />
+          </Picker>
+        </View>"""
 
-# Add new fields to save
-content = content.replace(
-    'year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, photos: uploadedPhotos,',
-    'year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, titleStatus, engineStatus, transStatus, airbags, tires, photos: uploadedPhotos,'
-)
+new = """        <Text style={styles.sectionLabel}>Damage Level</Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, damage === "none" && styles.toggleActive]} onPress={() => setDamage("none")}>
+            <Text style={styles.toggleText}>No Damage</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, damage === "minor" && styles.toggleYellow]} onPress={() => setDamage("minor")}>
+            <Text style={styles.toggleText}>Minor</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, damage === "moderate" && styles.toggleOrange]} onPress={() => setDamage("moderate")}>
+            <Text style={styles.toggleText}>Moderate</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, damage === "major" && styles.toggleActiveRed]} onPress={() => setDamage("major")}>
+            <Text style={styles.toggleText}>Major Damage</Text>
+          </TouchableOpacity>
+        </View>"""
 
-# Replace old toggles with new expanded set
-content = content.replace(
-    '''        <Text style={styles.sectionLabel}>Condition - tap to toggle</Text>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, runs ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setRuns(!runs)}>
-            <Text style={styles.toggleText}>{runs ? "Runs" : "Not Running"}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, hasKeys ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasKeys(!hasKeys)}>
-            <Text style={styles.toggleText}>{hasKeys ? "Has Keys" : "No Keys"}</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, hasTitle ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasTitle(!hasTitle)}>
-            <Text style={styles.toggleText}>{hasTitle ? "Drivable" : "Not Drivable"}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, needsTow ? styles.toggleActiveRed : styles.toggleActive]} onPress={() => setNeedsTow(!needsTow)}>
-            <Text style={styles.toggleText}>{needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
-          </TouchableOpacity>
-        </View>''',
-    '''        <Text style={styles.sectionLabel}>Condition - tap to toggle</Text>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, runs ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setRuns(!runs)}>
-            <Text style={styles.toggleText}>{runs ? "Runs" : "Not Running"}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, hasKeys ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasKeys(!hasKeys)}>
-            <Text style={styles.toggleText}>{hasKeys ? "Has Keys" : "No Keys"}</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, hasTitle ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasTitle(!hasTitle)}>
-            <Text style={styles.toggleText}>{hasTitle ? "Drivable" : "Not Drivable"}</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.sectionLabel}>Title Status</Text>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, titleStatus === "clean" && styles.toggleActive]} onPress={() => setTitleStatus("clean")}>
-            <Text style={styles.toggleText}>Clean Title</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, titleStatus === "rebuilt" && styles.toggleOrange]} onPress={() => setTitleStatus("rebuilt")}>
-            <Text style={styles.toggleText}>Rebuilt Salvage</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, titleStatus === "salvage" && styles.toggleActiveRed]} onPress={() => setTitleStatus("salvage")}>
-            <Text style={styles.toggleText}>Salvage Title</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.sectionLabel}>Engine</Text>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, engineStatus === "good" && styles.toggleActive]} onPress={() => setEngineStatus("good")}>
-            <Text style={styles.toggleText}>Good</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, engineStatus === "bad" && styles.toggleActiveRed]} onPress={() => setEngineStatus("bad")}>
-            <Text style={styles.toggleText}>Bad</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, engineStatus === "unknown" && styles.toggleOrange]} onPress={() => setEngineStatus("unknown")}>
-            <Text style={styles.toggleText}>Unknown</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.sectionLabel}>Transmission</Text>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, transStatus === "good" && styles.toggleActive]} onPress={() => setTransStatus("good")}>
-            <Text style={styles.toggleText}>Good</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, transStatus === "bad" && styles.toggleActiveRed]} onPress={() => setTransStatus("bad")}>
-            <Text style={styles.toggleText}>Bad</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, transStatus === "unknown" && styles.toggleOrange]} onPress={() => setTransStatus("unknown")}>
-            <Text style={styles.toggleText}>Unknown</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.sectionLabel}>Airbags</Text>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, airbags === "deployed" && styles.toggleActiveRed]} onPress={() => setAirbags("deployed")}>
-            <Text style={styles.toggleText}>One or more deployed</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, airbags === "none" && styles.toggleActive]} onPress={() => setAirbags("none")}>
-            <Text style={styles.toggleText}>No airbags deployed</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.sectionLabel}>Tires</Text>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, tires === "all4" && styles.toggleActive]} onPress={() => setTires("all4")}>
-            <Text style={styles.toggleText}>All 4 tires</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, tires === "missing" && styles.toggleActiveRed]} onPress={() => setTires("missing")}>
-            <Text style={styles.toggleText}>Missing 1 or more</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, needsTow ? styles.toggleActiveRed : styles.toggleActive]} onPress={() => setNeedsTow(!needsTow)}>
-            <Text style={styles.toggleText}>{needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
-          </TouchableOpacity>
-        </View>'''
-)
+content = content.replace(old, new)
 
-# Add toggleOrange style if not there
-content = content.replace(
-    '  toggleActiveRed: { backgroundColor: "#c0392b", borderColor: "#c0392b" },',
-    '  toggleActiveRed: { backgroundColor: "#c0392b", borderColor: "#c0392b" },\n  toggleOrange: { backgroundColor: "#e67e22", borderColor: "#e67e22" },'
-)
+# Add yellow style if not there
+if 'toggleYellow' not in content:
+    content = content.replace(
+        '  toggleOrange: { backgroundColor: "#e67e22", borderColor: "#e67e22" },',
+        '  toggleOrange: { backgroundColor: "#e67e22", borderColor: "#e67e22" },\n  toggleYellow: { backgroundColor: "#f1c40f", borderColor: "#f1c40f" },'
+    )
 
 f = open('App.js', 'w')
 f.write(content)
