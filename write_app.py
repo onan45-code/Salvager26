@@ -2,111 +2,116 @@ f = open('App.js', 'r')
 content = f.read()
 f.close()
 
-# Add Profile screen to navigator
+# Add new states
 content = content.replace(
-    '        <Stack.Screen name="CreateListing" component={CreateListingScreen} />',
-    '        <Stack.Screen name="CreateListing" component={CreateListingScreen} />\n        <Stack.Screen name="Profile" component={ProfileScreen} />'
+    '  const [needsTow, setNeedsTow] = useState(false);\n  const [damage, setDamage] = useState("");',
+    '  const [needsTow, setNeedsTow] = useState(false);\n  const [damage, setDamage] = useState("");\n  const [titleStatus, setTitleStatus] = useState("");\n  const [engineStatus, setEngineStatus] = useState("");\n  const [transStatus, setTransStatus] = useState("");\n  const [airbags, setAirbags] = useState("");\n  const [tires, setTires] = useState("");'
 )
 
-# Add Profile button to dashboard
+# Add new fields to save
 content = content.replace(
-    '      <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("CreateListing")}>',
-    '      <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("Profile")}>\n        <Text style={styles.dealerButtonText}>My Profile</Text>\n      </TouchableOpacity>\n      <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("CreateListing")}>'
+    'year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, photos: uploadedPhotos,',
+    'year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, titleStatus, engineStatus, transStatus, airbags, tires, photos: uploadedPhotos,'
 )
 
-# Add Profile screen before styles
+# Replace old toggles with new expanded set
 content = content.replace(
-    'const styles = StyleSheet.create({',
-    '''function ProfileScreen({ navigation }) {
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [zipCode, setZipCode] = useState("");
-  const [companyName, setCompanyName] = useState("");
-  const user = auth.currentUser;
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const snap = await getDocs(query(collection(db, "users"), where("uid", "==", user.uid)));
-        if (!snap.empty) {
-          const data = snap.docs[0].data();
-          setUserData({ id: snap.docs[0].id, ...data });
-          setFirstName(data.firstName || "");
-          setLastName(data.lastName || "");
-          setPhone(data.phone || "");
-          setZipCode(data.zipCode || "");
-          setCompanyName(data.companyName || "");
-        }
-      } catch(e) {}
-      setLoading(false);
-    };
-    fetchProfile();
-  }, []);
-
-  const handleSave = async () => {
-    try {
-      await updateDoc(doc(db, "users", userData.id), { firstName, lastName, phone, zipCode, companyName });
-      Alert.alert("Success", "Profile updated!");
-      setEditing(false);
-    } catch(e) { Alert.alert("Error", e.message); }
-  };
-
-  if (loading) return (
-    <View style={styles.container}>
-      <Text style={styles.emptyStateText}>Loading...</Text>
-    </View>
-  );
-
-  return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.dashboardHeader}>
-        <Text style={styles.dashboardTitle}>My Profile</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.logoutText}>Back</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.listingCard}>
-        <Text style={styles.sectionLabel}>Account Info</Text>
-        <Text style={styles.listingDetail}>Email: {user.email}</Text>
-      </View>
-      <View style={styles.listingCard}>
-        <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12}}>
-          <Text style={styles.sectionLabel}>Personal Info</Text>
-          <TouchableOpacity onPress={() => setEditing(!editing)}>
-            <Text style={{color: "#c0392b", fontWeight: "bold"}}>{editing ? "Cancel" : "Edit"}</Text>
+    '''        <Text style={styles.sectionLabel}>Condition - tap to toggle</Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, runs ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setRuns(!runs)}>
+            <Text style={styles.toggleText}>{runs ? "Runs" : "Not Running"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, hasKeys ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasKeys(!hasKeys)}>
+            <Text style={styles.toggleText}>{hasKeys ? "Has Keys" : "No Keys"}</Text>
           </TouchableOpacity>
         </View>
-        {editing ? (
-          <>
-            <View style={{flexDirection: "row", gap: 8}}>
-              <TextInput style={[styles.input, {flex: 1}]} placeholder="First Name" placeholderTextColor="#999999" value={firstName} onChangeText={setFirstName} />
-              <TextInput style={[styles.input, {flex: 1}]} placeholder="Last Name" placeholderTextColor="#999999" value={lastName} onChangeText={setLastName} />
-            </View>
-            <TextInput style={styles.input} placeholder="Phone" placeholderTextColor="#999999" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
-            <TextInput style={styles.input} placeholder="ZIP Code" placeholderTextColor="#999999" keyboardType="numeric" value={zipCode} onChangeText={setZipCode} />
-            <TextInput style={styles.input} placeholder="Company Name (optional)" placeholderTextColor="#999999" value={companyName} onChangeText={setCompanyName} />
-            <TouchableOpacity style={styles.sellerButton} onPress={handleSave}>
-              <Text style={styles.sellerButtonText}>Save Changes</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <Text style={styles.listingDetail}>Name: {firstName} {lastName}</Text>
-            <Text style={styles.listingDetail}>Phone: {phone}</Text>
-            <Text style={styles.listingDetail}>ZIP Code: {zipCode}</Text>
-            {companyName ? <Text style={styles.listingDetail}>Company: {companyName}</Text> : null}
-          </>
-        )}
-      </View>
-    </ScrollView>
-  );
-}
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, hasTitle ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasTitle(!hasTitle)}>
+            <Text style={styles.toggleText}>{hasTitle ? "Drivable" : "Not Drivable"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, needsTow ? styles.toggleActiveRed : styles.toggleActive]} onPress={() => setNeedsTow(!needsTow)}>
+            <Text style={styles.toggleText}>{needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
+          </TouchableOpacity>
+        </View>''',
+    '''        <Text style={styles.sectionLabel}>Condition - tap to toggle</Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, runs ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setRuns(!runs)}>
+            <Text style={styles.toggleText}>{runs ? "Runs" : "Not Running"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, hasKeys ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasKeys(!hasKeys)}>
+            <Text style={styles.toggleText}>{hasKeys ? "Has Keys" : "No Keys"}</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, hasTitle ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasTitle(!hasTitle)}>
+            <Text style={styles.toggleText}>{hasTitle ? "Drivable" : "Not Drivable"}</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.sectionLabel}>Title Status</Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, titleStatus === "clean" && styles.toggleActive]} onPress={() => setTitleStatus("clean")}>
+            <Text style={styles.toggleText}>Clean Title</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, titleStatus === "rebuilt" && styles.toggleOrange]} onPress={() => setTitleStatus("rebuilt")}>
+            <Text style={styles.toggleText}>Rebuilt Salvage</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, titleStatus === "salvage" && styles.toggleActiveRed]} onPress={() => setTitleStatus("salvage")}>
+            <Text style={styles.toggleText}>Salvage Title</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.sectionLabel}>Engine</Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, engineStatus === "good" && styles.toggleActive]} onPress={() => setEngineStatus("good")}>
+            <Text style={styles.toggleText}>Good</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, engineStatus === "bad" && styles.toggleActiveRed]} onPress={() => setEngineStatus("bad")}>
+            <Text style={styles.toggleText}>Bad</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, engineStatus === "unknown" && styles.toggleOrange]} onPress={() => setEngineStatus("unknown")}>
+            <Text style={styles.toggleText}>Unknown</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.sectionLabel}>Transmission</Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, transStatus === "good" && styles.toggleActive]} onPress={() => setTransStatus("good")}>
+            <Text style={styles.toggleText}>Good</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, transStatus === "bad" && styles.toggleActiveRed]} onPress={() => setTransStatus("bad")}>
+            <Text style={styles.toggleText}>Bad</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, transStatus === "unknown" && styles.toggleOrange]} onPress={() => setTransStatus("unknown")}>
+            <Text style={styles.toggleText}>Unknown</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.sectionLabel}>Airbags</Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, airbags === "deployed" && styles.toggleActiveRed]} onPress={() => setAirbags("deployed")}>
+            <Text style={styles.toggleText}>One or more deployed</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, airbags === "none" && styles.toggleActive]} onPress={() => setAirbags("none")}>
+            <Text style={styles.toggleText}>No airbags deployed</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.sectionLabel}>Tires</Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, tires === "all4" && styles.toggleActive]} onPress={() => setTires("all4")}>
+            <Text style={styles.toggleText}>All 4 tires</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, tires === "missing" && styles.toggleActiveRed]} onPress={() => setTires("missing")}>
+            <Text style={styles.toggleText}>Missing 1 or more</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, needsTow ? styles.toggleActiveRed : styles.toggleActive]} onPress={() => setNeedsTow(!needsTow)}>
+            <Text style={styles.toggleText}>{needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
+          </TouchableOpacity>
+        </View>'''
+)
 
-const styles = StyleSheet.create({'''
+# Add toggleOrange style if not there
+content = content.replace(
+    '  toggleActiveRed: { backgroundColor: "#c0392b", borderColor: "#c0392b" },',
+    '  toggleActiveRed: { backgroundColor: "#c0392b", borderColor: "#c0392b" },\n  toggleOrange: { backgroundColor: "#e67e22", borderColor: "#e67e22" },'
 )
 
 f = open('App.js', 'w')
