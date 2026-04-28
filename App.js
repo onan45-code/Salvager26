@@ -1101,7 +1101,7 @@ const styles = StyleSheet.create({
   toggleActiveRed: { backgroundColor: "#c0392b", borderColor: "#c0392b" },
   toggleOrange: { backgroundColor: "#e67e22", borderColor: "#e67e22" },
   toggleYellow: { backgroundColor: "#f1c40f", borderColor: "#f1c40f" },
-  toggleText: { color: "#1a1a1a", fontSize: 14, fontWeight: "bold" },
+  toggleText: { color: "#1a1a1a", fontSize: 18, fontWeight: "bold" },
   photoButton: { backgroundColor: "#ffffff", borderRadius: 12, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#1a3a6b", marginBottom: 8 },
   photoButtonText: { color: "#1a3a6b", fontSize: 16 },
   photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
