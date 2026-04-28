@@ -792,7 +792,7 @@ function CreateListingScreen({ navigation }) {
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>List Your Car</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.logoutText}>Cancel</Text>
+          <Text style={styles.logoutText}>Back</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.formContainer}>
