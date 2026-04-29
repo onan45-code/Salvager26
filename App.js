@@ -315,7 +315,6 @@ function DashboardScreen({ navigation }) {
       <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("Profile")}>
         <Text style={styles.dealerButtonText}>My Profile</Text>
       </TouchableOpacity>
-      <View style={{height: 12}} />
       <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("CreateListing")}>
         <Text style={styles.sellerButtonText}>+ List a Car</Text>
       </TouchableOpacity>
@@ -324,7 +323,7 @@ function DashboardScreen({ navigation }) {
       </TouchableOpacity>
       {myListings.length > 0 && (
         <View>
-          <Text style={{color: "#1a3a6b", fontSize: 18, fontWeight: "bold", textAlign: "center", marginTop: 24, marginBottom: 8}}>My Active Listings</Text>
+          <Text style={{color: "#ffffff", fontSize: 18, fontWeight: "bold", textAlign: "center", marginTop: 0, marginBottom: 8, backgroundColor: "#c0392b", padding: 18, borderRadius: 14}}>My Active Listings</Text>
           {myListings.map(listing => (
             <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => navigation.navigate("SellerBids", { listing })}>
               {listing.photos && listing.photos.length > 0 && (
@@ -385,7 +384,6 @@ function MyListingsScreen({ navigation }) {
       <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("Profile")}>
         <Text style={styles.dealerButtonText}>My Profile</Text>
       </TouchableOpacity>
-      <View style={{height: 12}} />
       <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("CreateListing")}>
         <Text style={styles.sellerButtonText}>+ List a Car</Text>
       </TouchableOpacity>
@@ -1120,7 +1118,7 @@ function MyBidScreen({ route, navigation }) {
   return (
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
       <View style={styles.dashboardHeader}>
-        <Text style={styles.dashboardTitle}>My Bid</Text>
+        <Text style={styles.dashboardTitle}>My Bids</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.logoutText}>Back</Text>
         </TouchableOpacity>
@@ -1136,11 +1134,16 @@ function MyBidScreen({ route, navigation }) {
         <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model} {listing.trim}</Text>
         <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
         <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
-        {listing.runs === false && <Text style={styles.conditionBadge}>Not Running</Text>}
-        {listing.needsTow === true && <Text style={styles.conditionBadge}>Needs Tow</Text>}
-        {listing.titleStatus && <Text style={styles.listingDetail}>Title: {listing.titleStatus}</Text>}
-        {listing.engineStatus && <Text style={styles.listingDetail}>Engine: {listing.engineStatus}</Text>}
-        {listing.damage && <Text style={styles.listingDetail}>Damage: {listing.damage}</Text>}
+        <Text style={styles.listingDetail}>Runs: {listing.runs ? "Yes" : "No"}</Text>
+        <Text style={styles.listingDetail}>Keys: {listing.hasKeys ? "Yes" : "No"}</Text>
+        <Text style={styles.listingDetail}>Drivable: {listing.hasTitle ? "Yes" : "No"}</Text>
+        <Text style={styles.listingDetail}>Delivery: {listing.needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
+        {listing.titleStatus ? <Text style={styles.listingDetail}>Title: {listing.titleStatus}</Text> : null}
+        {listing.engineStatus ? <Text style={styles.listingDetail}>Engine: {listing.engineStatus}</Text> : null}
+        {listing.transStatus ? <Text style={styles.listingDetail}>Transmission: {listing.transStatus}</Text> : null}
+        {listing.airbags ? <Text style={styles.listingDetail}>Airbags: {listing.airbags}</Text> : null}
+        {listing.tires ? <Text style={styles.listingDetail}>Tires: {listing.tires}</Text> : null}
+        {listing.damage ? <Text style={styles.listingDetail}>Damage: {listing.damage}</Text> : null}
         {listing.notes ? <Text style={styles.listingDetail}>Notes: {listing.notes}</Text> : null}
       </View>
       {myBid && (
@@ -1161,6 +1164,7 @@ function MyBidScreen({ route, navigation }) {
               <Text style={[styles.secondaryButtonText, towingIncluded && {color: "#ffffff"}]}>{towingIncluded ? "Towing Included" : "Towing NOT Included"}</Text>
             </TouchableOpacity>
           )}
+          <Text style={styles.sectionLabel}>Message to Seller</Text>
           <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
           <TouchableOpacity style={styles.sellerButton} onPress={handleRaiseBid}>
             <Text style={styles.sellerButtonText}>{submitting ? "Updating..." : "Update Bid"}</Text>
@@ -1229,9 +1233,9 @@ const styles = StyleSheet.create({
   input: { backgroundColor: "#ffffff", color: "#1a1a1a", padding: 16, borderRadius: 12, fontSize: 16, width: "100%", borderWidth: 1, borderColor: "#dddddd" },
   textArea: { height: 120, textAlignVertical: "top" },
   buttons: { width: "100%", gap: 16 },
-  sellerButton: { backgroundColor: "#c0392b", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 16 },
+  sellerButton: { backgroundColor: "#c0392b", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 12 },
   sellerButtonText: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
-  dealerButton: { backgroundColor: "#1a3a6b", padding: 18, borderRadius: 14, alignItems: "center" },
+  dealerButton: { backgroundColor: "#1a3a6b", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 12 },
   dealerButtonText: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
   secondaryButton: { borderWidth: 1, borderColor: "#1a3a6b", padding: 18, borderRadius: 12, alignItems: "center" },
   secondaryButtonText: { color: "#1a3a6b", fontSize: 18 },
