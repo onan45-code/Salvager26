@@ -1,17 +1,15 @@
-f = open('App.js', 'r')
-content = f.read()
-f.close()
+with open('App.js', 'rb') as f:
+    content = f.read()
 
-content = content.replace(
-    'sellerButton: { backgroundColor: "#c0392b", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 8 },',
-    'sellerButton: { backgroundColor: "#c0392b", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 12 },'
-)
-content = content.replace(
-    'dealerButton: { backgroundColor: "#1a3a6b", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 8 },',
-    'dealerButton: { backgroundColor: "#1a3a6b", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 12 },'
-)
+positions = []
+start = 0
+while True:
+    pos = content.find(b'listing.id', start)
+    if pos == -1:
+        break
+    positions.append(pos)
+    start = pos + 1
 
-f = open('App.js', 'w')
-f.write(content)
-f.close()
-print('Done!')
+print(f'Found {len(positions)} occurrences')
+for pos in positions[:5]:
+    print(repr(content[pos-5:pos+12]))
