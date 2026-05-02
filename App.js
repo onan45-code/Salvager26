@@ -75,7 +75,8 @@ const TRIM_DATA = {
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
@@ -284,8 +285,9 @@ function DashboardScreen({ navigation }) {
       } catch(e) {}
       setLoading(false);
     };
-    fetchStats();
-  }, []);
+    const unsubscribe = navigation.addListener("focus", fetchStats);
+    return unsubscribe;
+  }, [navigation]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -539,9 +541,9 @@ function BrowseCarsScreen({ navigation }) {
         longitude: location.coords.longitude,
       });
       if (geocode && geocode[0] && geocode[0].postalCode) {
-        setZipCode(geocode[0].postalCode);
-        setZipCode(geocode[0].postalCode);
-        await applyFilter(listings);
+        const detectedZip = geocode[0].postalCode;
+        setZipCode(detectedZip);
+        await applyFilter(listings, detectedZip);
       }
     } catch(e) {
       Alert.alert("Error", "Could not detect location. Please enter ZIP manually.");
@@ -794,7 +796,7 @@ function CreateListingScreen({ navigation }) {
     for (const uri of photoUris) {
       const response = await fetch(uri);
       const blob = await response.blob();
-      const filename = "listings/" + auth.currentUser.uid + "/" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+      const filename = "listings/" + auth.currentUser.uid + "/" + Date.now() + "_" + Math.random().toString(36).slice(2, 11);
       const storageRef = ref(storage, filename);
       await uploadBytes(storageRef, blob);
       const url = await getDownloadURL(storageRef);
@@ -1281,7 +1283,7 @@ const styles = StyleSheet.create({
   toggleActiveRed: { backgroundColor: "#c0392b", borderColor: "#c0392b" },
   toggleOrange: { backgroundColor: "#e67e22", borderColor: "#e67e22" },
   toggleYellow: { backgroundColor: "#f1c40f", borderColor: "#f1c40f" },
-  toggleText: { color: "#1a1a1a", fontSize: 18, fontWeight: "bold" },
+  toggleText: { coloror: "#1a1a1a", fontSize: 18, fontWeight: "bold" },
   photoButton: { backgroundColor: "#ffffff", borderRadius: 12, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#1a3a6b", marginBottom: 8 },
   photoButtonText: { color: "#1a3a6b", fontSize: 16 },
   photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
@@ -1302,3 +1304,4 @@ const styles = StyleSheet.create({
   locationButton: { backgroundColor: "#1a3a6b", padding: 14, borderRadius: 12, justifyContent: "center", alignItems: "center", minWidth: 80 },
   locationButtonText: { color: "#ffffff", fontSize: 14, fontWeight: "bold" },
 });
+
