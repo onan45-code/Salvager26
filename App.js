@@ -1012,7 +1012,15 @@ function ProfileScreen({ navigation }) {
 
   const handleSave = async () => {
     try {
-      await updateDoc(doc(db, "users", userData.id), { firstName, lastName, phone, zipCode, companyName });
+      if (userData && userData.id) {
+        await updateDoc(doc(db, "users", userData.id), { firstName, lastName, phone, zipCode, companyName });
+      } else {
+        const newDoc = await addDoc(collection(db, "users"), {
+          uid: user.uid, email: user.email, firstName, lastName, phone, zipCode, companyName,
+          pushToken: "", createdAt: serverTimestamp()
+        });
+        setUserData({ id: newDoc.id, uid: user.uid, firstName, lastName, phone, zipCode, companyName });
+      }
       Alert.alert("Success", "Profile updated!");
       setEditing(false);
     } catch(e) { Alert.alert("Error", e.message); }
