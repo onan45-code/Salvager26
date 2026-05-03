@@ -141,6 +141,7 @@ export default function App() {
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="EditListing" component={EditListingScreen} />
         <Stack.Screen name="MyBid" component={MyBidScreen} />
+        <Stack.Screen name="MyBids" component={MyBidsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -269,7 +270,6 @@ function LoginScreen({ navigation, route }) {
 function DashboardScreen({ navigation }) {
   const [listingCount, setListingCount] = useState(0);
   const [bidCount, setBidCount] = useState(0);
-  const [myBids, setMyBids] = useState([]);
   const [userName, setUserName] = useState("");
   const [loading, setLoading] = useState(true);
   const user = auth.currentUser;
@@ -289,15 +289,7 @@ function DashboardScreen({ navigation }) {
         setMyListings(activeListings);
         const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
         setBidCount(bidsSnap.size);
-        const bidsData = bidsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const bidsWithListings = await Promise.all(bidsData.slice(0, 3).map(async bid => {
-          try {
-            const listingSnap = await getDocs(query(collection(db, "listings"), where("__name__", "==", bid.listingId)));
-            const listing = listingSnap.empty ? null : listingSnap.docs[0].data();
-            return { ...bid, listingInfo: listing };
-          } catch(e) { return bid; }
-        }));
-        setMyBids(bidsWithListings);
+        
       } catch(e) {}
       setLoading(false);
     };
@@ -339,6 +331,9 @@ function DashboardScreen({ navigation }) {
       <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("BrowseCars")}>
         <Text style={styles.dealerButtonText}>Browse & Bid on Cars</Text>
       </TouchableOpacity>
+      <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("MyBids")}>
+        <Text style={styles.dealerButtonText}>My Bids</Text>
+      </TouchableOpacity>
       {myListings.length > 0 && (
         <View>
           <Text style={{color: "#ffffff", fontSize: 18, fontWeight: "bold", textAlign: "center", marginTop: 0, marginBottom: 8, backgroundColor: "#c0392b", padding: 18, borderRadius: 14}}>My Active Listings</Text>
@@ -355,20 +350,6 @@ function DashboardScreen({ navigation }) {
               <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
               <Text style={styles.viewBidsText}>View Bids →</Text>
             </TouchableOpacity>
-          ))}
-        </View>
-      )}
-      {myBids.length > 0 && (
-        <View>
-          <Text style={styles.sectionLabel}>My Recent Bids</Text>
-          {myBids.map(bid => (
-            <View key={bid.id} style={styles.listingCard}>
-              <Text style={styles.listingTitle}>{bid.listingInfo ? bid.listingInfo.year + " " + bid.listingInfo.make + " " + bid.listingInfo.model : "Vehicle"}</Text>
-              <Text style={styles.listingDetail}>Your bid: ${bid.amount}</Text>
-              <Text style={styles.listingDetail}>Status: {bid.status === "accepted" ? "Accepted" : "Pending"}</Text>
-              {bid.towingIncluded && <Text style={styles.listingDetail}>Towing included</Text>}
-              <Text style={styles.listingDetail}>{formatBidDate(bid.createdAt)}</Text>
-            </View>
           ))}
         </View>
       )}
@@ -1204,6 +1185,62 @@ function MyBidScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       )}
+    </ScrollView>
+  );
+}
+
+function MyBidsScreen({ navigation }) {
+  const [bids, setBids] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchBids = async () => {
+    try {
+      const user = auth.currentUser;
+      const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
+      const bidsData = bidsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const bidsWithListings = await Promise.all(bidsData.map(async bid => {
+        try {
+          const listingSnap = await getDocs(query(collection(db, "listings"), where("__name__", "==", bid.listingId)));
+          const listing = listingSnap.empty ? null : { id: listingSnap.docs[0].id, ...listingSnap.docs[0].data() };
+          return { ...bid, listingInfo: listing };
+        } catch(e) { return bid; }
+      }));
+      bidsWithListings.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setBids(bidsWithListings);
+    } catch(e) { Alert.alert("Error", e.message); }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", fetchBids);
+    return unsubscribe;
+  }, [navigation]);
+
+  return (
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.dashboardHeader}>
+        <Text style={styles.dashboardTitle}>My Bids</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.logoutText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+      {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : bids.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>No bids yet.</Text>
+          <Text style={styles.emptyStateSubtext}>Browse cars to place your first bid!</Text>
+        </View>
+      ) : bids.map(bid => (
+        <TouchableOpacity key={bid.id} style={[styles.listingCard, bid.status === "accepted" && styles.acceptedCard]} onPress={() => bid.listingInfo && navigation.navigate("MyBid", { listing: bid.listingInfo })}>
+          {bid.listingInfo && bid.listingInfo.photos && bid.listingInfo.photos.length > 0 && (
+            <Image source={{ uri: bid.listingInfo.photos[0] }} style={styles.listingPhoto} />
+          )}
+          <Text style={styles.listingTitle}>{bid.listingInfo ? bid.listingInfo.year + " " + bid.listingInfo.make + " " + bid.listingInfo.model : "Vehicle"}</Text>
+          <Text style={styles.bidAmount}>${bid.amount}</Text>
+          {bid.status === "accepted" ? <Text style={styles.acceptedBadge}>ACCEPTED</Text> : <Text style={styles.listingDetail}>Status: Pending</Text>}
+          {bid.towingIncluded && <Text style={styles.listingDetail}>Towing included</Text>}
+          <Text style={styles.listingDetail}>{formatBidDate(bid.createdAt)}</Text>
+        </TouchableOpacity>
+      ))}
     </ScrollView>
   );
 }
