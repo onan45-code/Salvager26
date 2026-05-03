@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useState, useEffect } from 'react';
 import { auth, db, storage } from './firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Picker } from '@react-native-picker/picker';
@@ -14,6 +14,10 @@ import * as Location from 'expo-location';
 import { getDistance } from 'geolib';
 
 const Stack = createStackNavigator();
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+}
 
 function formatBidDate(createdAt) {
   if (!createdAt) return "";
@@ -180,6 +184,14 @@ function LoginScreen({ navigation, route }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const handleForgotPassword = async () => {
+    if (!email) { Alert.alert("Enter Email", "Type your email above first, then tap Forgot Password again."); return; }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      Alert.alert("Check Your Email", "A password reset link has been sent to " + email);
+    } catch (error) { Alert.alert("Error", error.message); }
+  };
+
   const handleLogin = async () => {
     if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
     setLoading(true);
@@ -198,6 +210,14 @@ function LoginScreen({ navigation, route }) {
   const handleSignUp = async () => {
     if (!email || !password || !firstName || !lastName || !phone || !zipCode) {
       Alert.alert("Error", "Please fill in all required fields");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert("Weak Password", "Password must be at least 6 characters.");
       return;
     }
     if (password !== confirmPassword) {
@@ -251,9 +271,14 @@ function LoginScreen({ navigation, route }) {
           </View>
         )}
         {mode === "login" ? (
-          <TouchableOpacity style={styles.sellerButton} onPress={handleLogin}>
-            <Text style={styles.sellerButtonText}>{loading ? "Loading..." : "Log In"}</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.sellerButton} onPress={handleLogin}>
+              <Text style={styles.sellerButtonText}>{loading ? "Loading..." : "Log In"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleForgotPassword}>
+              <Text style={styles.backText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </>
         ) : (
           <TouchableOpacity style={styles.sellerButton} onPress={handleSignUp}>
             <Text style={styles.sellerButtonText}>{loading ? "Loading..." : "Create Account"}</Text>
@@ -456,6 +481,23 @@ function SellerBidsScreen({ route, navigation }) {
         try {
           await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail });
           await updateDoc(doc(db, "bids", bid.id), { status: "accepted" });
+          try {
+            const buyerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", bid.buyerId)));
+            if (!buyerSnap.empty) {
+              const buyerToken = buyerSnap.docs[0].data().pushToken;
+              if (buyerToken) {
+                await fetch("https://exp.host/--/api/v2/push/send", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    to: buyerToken,
+                    title: "Your offer was accepted!",
+                    body: "Your $" + bid.amount + " bid on the " + listing.year + " " + listing.make + " " + listing.model + " was accepted. Seller: " + auth.currentUser.email,
+                  }),
+                });
+              }
+            }
+          } catch(e) {}
           Alert.alert("Deal Done!", "Sold for $" + bid.amount + ". Buyer: " + bid.buyerEmail);
         } catch(e) { Alert.alert("Error", e.message); }
         setAccepting(false);
