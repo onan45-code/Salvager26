@@ -15,6 +15,13 @@ import { getDistance } from 'geolib';
 
 const Stack = createStackNavigator();
 
+function formatBidDate(createdAt) {
+  if (!createdAt) return "";
+  const date = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return "Bid placed " + months[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
+}
+
 function formatListedDate(createdAt) {
   if (!createdAt) return "";
   const date = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
@@ -360,6 +367,7 @@ function DashboardScreen({ navigation }) {
               <Text style={styles.listingDetail}>Your bid: ${bid.amount}</Text>
               <Text style={styles.listingDetail}>Status: {bid.status === "accepted" ? "Accepted" : "Pending"}</Text>
               {bid.towingIncluded && <Text style={styles.listingDetail}>Towing included</Text>}
+              <Text style={styles.listingDetail}>{formatBidDate(bid.createdAt)}</Text>
             </View>
           ))}
         </View>
@@ -515,6 +523,7 @@ function SellerBidsScreen({ route, navigation }) {
           {bid.towingIncluded !== undefined && <Text style={styles.listingDetail}>Towing: {bid.towingIncluded ? "Included in bid" : "Not included"}</Text>}
           {bid.status === "accepted" ? <Text style={styles.listingDetail}>Buyer: {bid.buyerEmail}</Text> : <Text style={styles.listingDetail}>Buyer: Contact hidden until offer accepted</Text>}
           {bid.note ? <Text style={styles.listingDetail}>Note: {bid.note}</Text> : null}
+          <Text style={styles.listingDetail}>{formatBidDate(bid.createdAt)}</Text>
           {listing.status !== "sold" ? (
             <TouchableOpacity style={[styles.acceptButton, bid.status === "accepted" && styles.acceptedButton]} onPress={() => bid.status !== "accepted" && handleAcceptOffer(bid)} disabled={accepting || bid.status === "accepted"}>
               <Text style={styles.acceptButtonText}>{bid.status === "accepted" ? "Offer Accepted" : accepting ? "Processing..." : "Accept Offer"}</Text>
