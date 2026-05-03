@@ -15,6 +15,13 @@ import { getDistance } from 'geolib';
 
 const Stack = createStackNavigator();
 
+function formatListedDate(createdAt) {
+  if (!createdAt) return "";
+  const date = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return "Listed " + months[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
+}
+
 const CAR_DATA = {
   "Toyota": ["Camry", "Corolla", "RAV4", "Tacoma", "Tundra", "Highlander", "4Runner", "Sienna", "Prius", "Avalon", "Yaris", "Sequoia", "Land Cruiser", "Venza", "C-HR"],
   "Ford": ["F-150", "Mustang", "Explorer", "Escape", "Edge", "Ranger", "Expedition", "Bronco", "Focus", "Fusion", "Taurus", "Maverick", "Transit", "EcoSport"],
@@ -336,6 +343,7 @@ function DashboardScreen({ navigation }) {
               </View>
               <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
               <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
+              <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
               <Text style={styles.viewBidsText}>View Bids →</Text>
             </TouchableOpacity>
           ))}
@@ -405,6 +413,7 @@ function MyListingsScreen({ navigation }) {
           </View>
           <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
           <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
+          <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
           <Text style={styles.viewBidsText}>{listing.status === "sold" ? "View Deal" : "View Bids"} →</Text>
         </TouchableOpacity>
       ))}
@@ -661,6 +670,7 @@ function BrowseCarsScreen({ navigation }) {
           <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
           <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
           {listing.distanceMiles !== undefined && <Text style={styles.listingDetail}>{listing.distanceMiles} miles away</Text>}
+          <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
           {listing.runs === false && <Text style={styles.conditionBadge}>Not Running</Text>}
           {listing.needsTow === true && <Text style={styles.conditionBadge}>Needs Tow</Text>}
           {myBidListingIds.includes(listing.id) ? <Text style={{color: "#2ecc71", fontSize: 14, marginTop: 8, fontWeight: "bold"}}>You bid on this ✓</Text> : <Text style={styles.bidButton2}>Place Bid →</Text>}
