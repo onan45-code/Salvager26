@@ -277,7 +277,9 @@ function DashboardScreen({ navigation }) {
         const listingsSnap = await getDocs(query(collection(db, "listings"), where("sellerId", "==", user.uid)));
         setListingCount(listingsSnap.size);
         const listingsData = listingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setMyListings(listingsData.filter(l => l.status !== "sold"));
+        const activeListings = listingsData.filter(l => l.status !== "sold");
+        activeListings.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        setMyListings(activeListings);
         const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
         setBidCount(bidsSnap.size);
         const bidsData = bidsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -375,6 +377,7 @@ function MyListingsScreen({ navigation }) {
       const q = query(collection(db, "listings"), where("sellerId", "==", user.uid));
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.status !== "deleted");
+      data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       setListings(data);
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
@@ -602,6 +605,7 @@ function BrowseCarsScreen({ navigation }) {
         const snapshot = await getDocs(collection(db, "listings"));
         const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         const filtered = data.filter(l => l.sellerId !== auth.currentUser.uid && l.status !== "sold");
+        filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         const myBidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", auth.currentUser.uid)));
         setMyBidListingIds(myBidsSnap.docs.map(d => d.data().listingId));
         setListings(filtered);
