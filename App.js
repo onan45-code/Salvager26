@@ -416,8 +416,9 @@ function MyListingsScreen({ navigation }) {
       </TouchableOpacity>
       {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : listings.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No listings yet.</Text>
-          <Text style={styles.emptyStateSubtext}>Tap List a Car to get started!</Text>
+          <Text style={{fontSize: 60, marginBottom: 16}}>🔧</Text>
+          <Text style={styles.emptyStateText}>Got a car to sell?</Text>
+          <Text style={styles.emptyStateSubtext}>Tap "List a Car" above to post your first vehicle and start receiving bids.</Text>
         </View>
       ) : listings.map(listing => (
         <TouchableOpacity key={listing.id} style={[styles.listingCard, listing.status === "sold" && styles.soldCard]} onPress={() => navigation.navigate("SellerBids", { listing })}>
@@ -535,8 +536,9 @@ function SellerBidsScreen({ route, navigation }) {
       </View>
       {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : bids.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No bids yet.</Text>
-          <Text style={styles.emptyStateSubtext}>Buyers will be notified!</Text>
+          <Text style={{fontSize: 60, marginBottom: 16}}>⏳</Text>
+          <Text style={styles.emptyStateText}>Waiting on offers</Text>
+          <Text style={styles.emptyStateSubtext}>No bids on this listing yet. We'll notify you the moment a buyer makes an offer.</Text>
         </View>
       ) : bids.map((bid, index) => (
         <View key={bid.id} style={[styles.bidCard, bid.status === "accepted" && styles.acceptedCard]}>
@@ -602,32 +604,41 @@ function BrowseCarsScreen({ navigation }) {
     return { latitude: parseFloat(data.places[0].latitude), longitude: parseFloat(data.places[0].longitude) };
   };
 
-  const applyFilter = async (allListings) => {
-    if (!zipCode || zipCode.length < 5) {
+  const applyFilter = async (allListings, zipOverride) => {
+    const effectiveZip = zipOverride || zipCode;
+    if (!effectiveZip || effectiveZip.length < 5) {
       setFilteredListings(allListings);
       return;
     }
     setFiltering(true);
-    try {
-      const userCoords = await getZipCoords(zipCode);
-      if (!userCoords) { Alert.alert("Error", "Invalid ZIP code"); setFilteredListings(allListings); setFiltering(false); return; }
-      const nearby = [];
-      const fromYear = yearFrom ? parseInt(yearFrom) : 0;
-      const toYear = yearTo ? parseInt(yearTo) : 9999;
-      for (const listing of allListings) {
-        const listingYear = parseInt(listing.year) || 0;
-        if (listingYear < fromYear || listingYear > toYear) continue;
-        if (!listing.zip) { nearby.push(listing); continue; }
-        const listingCoords = await getZipCoords(listing.zip);
-        if (!listingCoords) { nearby.push(listing); continue; }
-        const distanceMeters = getDistance(userCoords, listingCoords);
-        const distanceMiles = distanceMeters / 1609.34;
-        if (distanceMiles <= parseFloat(radius)) {
-          nearby.push({ ...listing, distanceMiles: Math.round(distanceMiles) });
-        }
+    const userCoords = await getZipCoords(effectiveZip);
+    if (!userCoords) {
+      Alert.alert("Error", "Could not look up your ZIP code (" + effectiveZip + "). Check your internet connection.");
+      setFilteredListings(allListings);
+      setFiltering(false);
+      return;
+    }
+    const nearby = [];
+    const fromYear = yearFrom ? parseInt(yearFrom) : 0;
+    const toYear = yearTo ? parseInt(yearTo) : 9999;
+    const radiusMiles = parseFloat(radius);
+    for (const listing of allListings) {
+      const listingYear = parseInt(listing.year) || 0;
+      if (listingYear < fromYear || listingYear > toYear) continue;
+      if (!listing.zip) continue;
+      let listingCoords = null;
+      try {
+        listingCoords = await getZipCoords(listing.zip);
+      } catch(e) { continue; }
+      if (!listingCoords) continue;
+      const distanceMeters = getDistance(userCoords, listingCoords);
+      const distanceMiles = distanceMeters / 1609.34;
+      console.log("Distance check:", listing.zip, "->", Math.round(distanceMiles), "miles, radius:", radiusMiles);
+      if (distanceMiles <= radiusMiles) {
+        nearby.push({ ...listing, distanceMiles: Math.round(distanceMiles) });
       }
-      setFilteredListings(nearby);
-    } catch(e) { setFilteredListings(allListings); }
+    }
+    setFilteredListings(nearby);
     setFiltering(false);
   };
 
@@ -692,8 +703,9 @@ function BrowseCarsScreen({ navigation }) {
       </View>
       {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : filteredListings.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No listings found.</Text>
-          <Text style={styles.emptyStateSubtext}>Try expanding your search radius!</Text>
+          <Text style={{fontSize: 60, marginBottom: 16}}>🚗</Text>
+          <Text style={styles.emptyStateText}>No cars match your filters</Text>
+          <Text style={styles.emptyStateSubtext}>Try expanding your search radius or year range, or check back later for new listings.</Text>
         </View>
       ) : filteredListings.map(listing => (
         <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => myBidListingIds.includes(listing.id) ? navigation.navigate("MyBid", { listing }) : navigation.navigate("PlaceBid", { listing })}>
@@ -1268,8 +1280,9 @@ function MyBidsScreen({ navigation }) {
       </View>
       {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : bids.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No bids yet.</Text>
-          <Text style={styles.emptyStateSubtext}>Browse cars to place your first bid!</Text>
+          <Text style={{fontSize: 60, marginBottom: 16}}>💰</Text>
+          <Text style={styles.emptyStateText}>You haven't placed any bids</Text>
+          <Text style={styles.emptyStateSubtext}>Find a car you like and make an offer. Sellers will be notified instantly.</Text>
         </View>
       ) : bids.map(bid => (
         <TouchableOpacity key={bid.id} style={[styles.listingCard, bid.status === "accepted" && styles.acceptedCard]} onPress={() => bid.listingInfo && navigation.navigate("MyBid", { listing: bid.listingInfo })}>
