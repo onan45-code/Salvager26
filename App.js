@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, Alert, ScrollView, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, Alert, ScrollView, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useState, useEffect } from 'react';
@@ -296,7 +296,8 @@ function LoginScreen({ navigation, route }) {
   };
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <StatusBar style="dark" />
       <Text style={styles.logo}>{mode === "login" ? "Welcome Back" : "Create Account"}</Text>
       <Text style={styles.tagline}>Enter your details to continue</Text>
@@ -346,6 +347,7 @@ function LoginScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -385,7 +387,8 @@ function DashboardScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <StatusBar style="dark" />
       <View style={styles.dashboardHeader}>
         <Text style={styles.logo}>Salvager</Text>
@@ -436,6 +439,7 @@ function DashboardScreen({ navigation }) {
         </View>
       )}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -458,7 +462,8 @@ function MyListingsScreen({ navigation }) {
     return unsubscribe;
   }, [navigation]);
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>My Listings</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -493,6 +498,7 @@ function MyListingsScreen({ navigation }) {
         </TouchableOpacity>
       ))}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -608,7 +614,8 @@ function SellerBidsScreen({ route, navigation }) {
     ]);
   };
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>Bids</Text>
         <View style={{flexDirection: "row", gap: 16}}>
@@ -695,6 +702,7 @@ function SellerBidsScreen({ route, navigation }) {
         </View>
       ))}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -799,7 +807,8 @@ function BrowseCarsScreen({ navigation }) {
   }, [navigation]);
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>Browse Cars</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -864,6 +873,7 @@ function BrowseCarsScreen({ navigation }) {
         </TouchableOpacity>
       ))}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -905,6 +915,13 @@ function PlaceBidScreen({ route, navigation }) {
     setLoading(true);
     try {
       const user = auth.currentUser;
+      const dupSnap = await getDocs(query(collection(db, "bids"), where("listingId", "==", listing.id), where("buyerId", "==", user.uid)));
+      if (!dupSnap.empty) {
+        setLoading(false);
+        Alert.alert("Already bid", "You've already placed a bid on this listing. Opening it now.");
+        navigation.replace("MyBid", { listing });
+        return;
+      }
       await addDoc(collection(db, "bids"), {
         listingId: listing.id, buyerId: user.uid, buyerEmail: user.email,
         amount: parseFloat(amount), towingIncluded, pickupTime, note, internalNote, status: "pending", createdAt: serverTimestamp(),
@@ -932,7 +949,8 @@ function PlaceBidScreen({ route, navigation }) {
     setLoading(false);
   };
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>Place Bid</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -979,6 +997,7 @@ function PlaceBidScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -992,6 +1011,8 @@ function CreateListingScreen({ navigation }) {
   const [vin, setVin] = useState("");
   const [decodingVin, setDecodingVin] = useState(false);
   const [vinError, setVinError] = useState("");
+  const [vinDecoded, setVinDecoded] = useState("");
+  const [pickerResetKey, setPickerResetKey] = useState(0);
   const [mileage, setMileage] = useState("");
   const [city, setCity] = useState("");
   const [zip, setZip] = useState("");
@@ -1046,7 +1067,6 @@ function CreateListingScreen({ navigation }) {
         setDecodingVin(false);
         return;
       }
-      if (decodedYear) setYear(decodedYear);
       let matchedMake = "";
       if (decodedMake) {
         const lower = decodedMake.toLowerCase();
@@ -1055,18 +1075,22 @@ function CreateListingScreen({ navigation }) {
           Object.keys(CAR_DATA).find(k => lower.includes(k.toLowerCase())) ||
           Object.keys(CAR_DATA).find(k => k.toLowerCase().includes(lower)) ||
           "Other";
-        setMake(matchedMake);
       }
+      let matchedModel = "";
       if (decodedModel && matchedMake) {
         const models = CAR_DATA[matchedMake] || [];
         const lower = decodedModel.toLowerCase();
-        const matchedModel =
+        matchedModel =
           models.find(m => m.toLowerCase() === lower) ||
           models.find(m => lower.includes(m.toLowerCase())) ||
           models.find(m => m.toLowerCase().includes(lower)) ||
           "Other";
-        setModel(matchedModel);
       }
+      setPickerResetKey(k => k + 1);
+      if (decodedYear) setYear(decodedYear);
+      if (matchedMake) setMake(matchedMake);
+      if (matchedModel) setModel(matchedModel);
+      setVinDecoded([decodedYear, decodedMake, decodedModel].filter(Boolean).join(" "));
     } catch(e) {
       setVinError("Couldn't decode this VIN. Please fill in the fields manually.");
     }
@@ -1106,7 +1130,8 @@ function CreateListingScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>List Your Car</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -1127,20 +1152,22 @@ function CreateListingScreen({ navigation }) {
             const clean = t.toUpperCase().replace(/\s/g, "");
             setVin(clean);
             setVinError("");
+            setVinDecoded("");
             if (clean.length === 17) decodeVin(clean);
           }}
         />
         {decodingVin ? <Text style={styles.listingDetail}>Decoding VIN...</Text> : null}
         {vinError ? <Text style={{color: "#c0392b", fontSize: 14, marginTop: 4}}>{vinError}</Text> : null}
+        {vinDecoded ? <Text style={{color: "#2ecc71", fontSize: 14, marginTop: 4}}>Decoded: {vinDecoded}</Text> : null}
         <View style={styles.pickerRow}>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker selectedValue={year} onValueChange={(val) => setYear(val)} style={styles.picker}>
+            <Picker key={"year-" + pickerResetKey} selectedValue={year} onValueChange={(val) => setYear(val)} style={styles.picker}>
               <Picker.Item label="Year" value="" />
               {years.map(y => <Picker.Item key={y} label={y} value={y} />)}
             </Picker>
           </View>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker selectedValue={make} onValueChange={(val) => { setMake(val); setModel(""); setTrim(""); }} style={styles.picker}>
+            <Picker key={"make-" + pickerResetKey} selectedValue={make} onValueChange={(val) => { setMake(val); setModel(""); setTrim(""); }} style={styles.picker}>
               <Picker.Item label="Make" value="" />
               {makes.map(m => <Picker.Item key={m} label={m} value={m} />)}
             </Picker>
@@ -1148,13 +1175,13 @@ function CreateListingScreen({ navigation }) {
         </View>
         <View style={styles.pickerRow}>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker key={"model-" + make} selectedValue={model} onValueChange={(val) => setModel(val)} style={styles.picker} enabled={make !== ""}>
+            <Picker key={"model-" + make + "-" + pickerResetKey} selectedValue={model} onValueChange={(val) => setModel(val)} style={styles.picker} enabled={make !== ""}>
               <Picker.Item label="Model" value="" />
               {make ? CAR_DATA[make].map(m => <Picker.Item key={m} label={m} value={m} />) : []}
             </Picker>
           </View>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker key={"trim-" + make} selectedValue={trim} onValueChange={(val) => setTrim(val)} style={styles.picker}>
+            <Picker key={"trim-" + make + "-" + pickerResetKey} selectedValue={trim} onValueChange={(val) => setTrim(val)} style={styles.picker}>
               <Picker.Item label="Trim" value="" />
               {(make && TRIM_DATA[make] ? TRIM_DATA[make] : ["Base", "Sport", "Limited", "Premium", "Other"]).map(t => <Picker.Item key={t} label={t} value={t} />)}
             </Picker>
@@ -1278,6 +1305,7 @@ function CreateListingScreen({ navigation }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1371,7 +1399,8 @@ function ProfileScreen({ navigation }) {
   );
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>My Profile</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -1482,6 +1511,7 @@ function ProfileScreen({ navigation }) {
         )}
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1608,7 +1638,8 @@ function MyBidScreen({ route, navigation }) {
   );
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>My Bids</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -1696,6 +1727,7 @@ function MyBidScreen({ route, navigation }) {
         </View>
       )}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1727,7 +1759,8 @@ function MyBidsScreen({ navigation }) {
   }, [navigation]);
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>My Bids</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -1754,6 +1787,7 @@ function MyBidsScreen({ navigation }) {
         </TouchableOpacity>
       ))}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1776,7 +1810,8 @@ function EditListingScreen({ route, navigation }) {
   };
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>Edit Listing</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -1800,6 +1835,7 @@ function EditListingScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
