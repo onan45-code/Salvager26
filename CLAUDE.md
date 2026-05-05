@@ -19,28 +19,36 @@ The app uses Firebase for all data and storage, and is built in JavaScript (Reac
 ## Key Files
 | File | Purpose |
 |------|---------|
-| `App.js` | Main application logic — screens, navigation, listing logic |
+| `App.js` | Main application logic — screens, navigation, listing logic (~1400 lines, single file) |
 | `firebase.js` | Firebase config, Firestore + Storage initialization |
-| `index.js` | App entry point |
+| `index.js` | App entry point (Expo boilerplate, don't touch) |
 | `app.json` | Expo configuration |
 | `assets/` | Logo and UI assets |
+
+---
+
+## Architecture Notes
+- **Single file app:** All screens, navigator, helpers, and StyleSheet live in `App.js`. Do not split into separate files unless Marc asks.
+- **Navigation:** `@react-navigation/stack`. Auth state (`auth.onAuthStateChanged`) decides `initialRoute` — `Welcome` or `Dashboard`.
+- **Screens:** `Welcome` → `Login` → `Dashboard` → `MyListings`, `BrowseCars`, `SellerBids`, `PlaceBid`, `CreateListing`, `Profile`, `EditListing`, `MyBid`, `MyBids`
+- **Brand gotcha:** npm package and repo are `CashForCars`, UI brand is `Salvager`. Do NOT fix one to match the other without asking.
+- **Sorting/filtering:** All client-side after `getDocs` — no Firestore indexes or composite queries.
 
 ---
 
 ## Firestore Database Schema
 
 ### Collection: `listings`
-Each document = one vehicle listing.
 | Field | Type | Description |
 |-------|------|-------------|
 | `make` | string | Vehicle make (e.g. "Kia") |
 | `model` | string | Vehicle model (e.g. "Sportage") |
-| `year` | string | Model year (e.g. "2007") |
-| `trim` | string | Trim level (e.g. "LX") |
+| `year` | string | Model year |
+| `trim` | string | Trim level |
 | `mileage` | string | Odometer reading |
 | `city` | string | Location city |
 | `zip` | string | ZIP code for radius search |
-| `status` | string | "active" / "sold" / "pending" |
+| `status` | string | "active" / "sold" / "deleted" (soft-delete only, never deleteDoc) |
 | `hasKeys` | boolean | Whether vehicle has keys |
 | `hasTitle` | boolean | Whether title is available |
 | `runs` | boolean | Whether vehicle runs |
@@ -49,23 +57,24 @@ Each document = one vehicle listing.
 | `photos` | array | Firebase Storage URLs |
 | `sellerId` | string | UID of seller |
 | `sellerEmail` | string | Seller email |
+| `soldPrice` | number | Set when status → "sold" |
+| `soldToEmail` | string | Set when status → "sold" |
 | `createdAt` | timestamp | Listing creation time |
 
 ### Collection: `bids`
-Each document = one bid on a listing.
 | Field | Type | Description |
 |-------|------|-------------|
 | `amount` | number | Bid amount in USD |
 | `listingId` | string | Reference to listings document |
 | `buyerId` | string | UID of bidder |
-| `buyerEmail` | string | Bidder email |
-| `status` | string | "pending" / "accepted" / "rejected" |
-| `pickupIncluded` | boolean | Whether buyer handles pickup |
+| `buyerEmail` | string | Hidden from seller until accepted |
+| `status` | string | "pending" / "accepted" |
+| `towingIncluded` | boolean | Whether buyer handles towing |
 | `note` | string | Buyer note |
 | `createdAt` | timestamp | Bid creation time |
 
 ### Collection: `users`
-Each document = one registered user.
+Queried by `where("uid", "==", ...)` not by document id.
 | Field | Type | Description |
 |-------|------|-------------|
 | `firstName` | string | First name |
@@ -80,31 +89,43 @@ Each document = one registered user.
 
 ---
 
-## Claude Code Rules (Read Before Every Task)
+## Push Notifications
+- Expo Push API directly — no server
+- Triggers: bid placed (notifies seller) + bid accepted (notifies buyer)
+- Failures silently swallowed — missing token never breaks main flow
+- Expo project ID: `aa722540-034a-4737-9e73-1efc9e4dd59c`
 
-1. **Always read `firebase.js` first** before suggesting any database or storage changes
-2. **Keep existing function and variable names** — do not rename without asking
-3. **Explain changes in plain English** — Marc is non-technical, avoid jargon
-4. **One task at a time** — don't rewrite multiple files in one go
-5. **Check `listings` schema** before adding new fields — stay consistent with existing structure
-6. **Photos are stored in Firebase Storage** — never hardcode URLs, always use Storage references
-7. **Status fields use lowercase strings** — "active", "accepted", "pending" (not uppercase)
+## Geolocation / Radius Filtering
+- ZIP → lat/lon via `https://api.zippopotam.us/us/{zip}` (free, no key)
+- Distance via `geolib.getDistance`, converted meters → miles (`/1609.34`)
+- Use `zipOverride` param in `applyFilter` — don't rely on async `setZipCode` state
+
+## Style Conventions
+- Colors: red `#c0392b` (seller/CTA), navy `#1a3a6b` (buyer), green `#2ecc71` (success), bg `#f5f5f5`
+- Errors: always `Alert.alert("Error", error.message)`
+- Screen refresh: `navigation.addListener("focus", fetchFn)` inside `useEffect`
 
 ---
 
-## Context Window Optimization
-- Focus on one file per session to avoid context overload
-- Start each session by reading this CLAUDE.md first
-- If context feels full, summarize progress and start a new session
-- Always commit to GitHub before ending a session
+## Claude Code Rules (Always Follow)
+
+1. **Read `firebase.js` first** before any database or storage changes
+2. **Keep existing function and variable names** — do not rename without asking
+3. **Explain in plain English** — Marc is non-technical, avoid jargon
+4. **One task at a time** — never rewrite multiple files in one go
+5. **Never use `deleteDoc`** — listings use soft-delete (`status: "deleted"`)
+6. **Never hardcode Firebase URLs** — always use Storage references
+7. **Status values are lowercase strings** — "active"/"sold"/"deleted" for listings, "pending"/"accepted" for bids
+8. **Commit to GitHub before ending every session**
+9. **Focus on one file per session** — if context feels full, summarize and start new session
 
 ---
 
 ## Project Owner
-- **Name:** Marc Zelinka (MarZeL on Fiverr)
+- **Name:** Marc Zelinka (@redstate25 on Fiverr)
 - **Company:** Carsmart Inc
 - **Firebase project:** salvager26
-- **GitHub repo:** github.com/onan45-code/Salvager26
+- **GitHub:** github.com/onan45-code/Salvager26
 - **OS:** macOS (Big Sur+)
 
 ---
