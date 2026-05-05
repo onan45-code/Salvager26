@@ -216,8 +216,8 @@ function WelcomeScreen({ navigation }) {
         <Image source={require("./assets/logo.png")} style={{width: 280, height: 280, resizeMode: "contain"}} />
       </View>
       <View style={styles.buttons}>
-        <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("Login", { mode: "login" })}>
-          <Text style={styles.sellerButtonText}>Log In</Text>
+        <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("Login", { mode: "login" })}>
+          <Text style={styles.dealerButtonText}>Log In</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("Login", { mode: "signup" })}>
           <Text style={styles.dealerButtonText}>Create Account</Text>
@@ -330,16 +330,16 @@ function LoginScreen({ navigation, route }) {
         )}
         {mode === "login" ? (
           <>
-            <TouchableOpacity style={styles.sellerButton} onPress={handleLogin}>
-              <Text style={styles.sellerButtonText}>{loading ? "Loading..." : "Log In"}</Text>
+            <TouchableOpacity style={styles.dealerButton} onPress={handleLogin}>
+              <Text style={styles.dealerButtonText}>{loading ? "Loading..." : "Log In"}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleForgotPassword}>
               <Text style={styles.backText}>Forgot Password?</Text>
             </TouchableOpacity>
           </>
         ) : (
-          <TouchableOpacity style={styles.sellerButton} onPress={handleSignUp}>
-            <Text style={styles.sellerButtonText}>{loading ? "Loading..." : "Create Account"}</Text>
+          <TouchableOpacity style={styles.dealerButton} onPress={handleSignUp}>
+            <Text style={styles.dealerButtonText}>{loading ? "Loading..." : "Create Account"}</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -421,7 +421,7 @@ function DashboardScreen({ navigation }) {
       </TouchableOpacity>
       {myListings.length > 0 && (
         <View>
-          <Text style={{color: "#ffffff", fontSize: 18, fontWeight: "bold", textAlign: "center", marginTop: 0, marginBottom: 8, backgroundColor: "#c0392b", padding: 18, borderRadius: 14}}>My Active Listings</Text>
+          <Text style={{color: "#ffffff", fontSize: 18, fontWeight: "bold", textAlign: "center", marginTop: 0, marginBottom: 8, backgroundColor: "#1B2B5E", padding: 18, borderRadius: 14}}>My Active Listings</Text>
           {myListings.map(listing => (
             <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => navigation.navigate("SellerBids", { listing })}>
               {listing.photos && listing.photos.length > 0 && (
@@ -620,7 +620,7 @@ function SellerBidsScreen({ route, navigation }) {
         <Text style={styles.dashboardTitle}>Bids</Text>
         <View style={{flexDirection: "row", gap: 16}}>
           {listing.status !== "sold" && <TouchableOpacity onPress={() => navigation.navigate("EditListing", { listing })}>
-            <Text style={{color: "#1a3a6b", fontSize: 20, fontWeight: "bold"}}>Edit</Text>
+            <Text style={{color: "#1B2B5E", fontSize: 20, fontWeight: "bold"}}>Edit</Text>
           </TouchableOpacity>}
           {listing.status !== "sold" && <TouchableOpacity onPress={handleDeleteListing}>
             <Text style={{color: "#c0392b", fontSize: 20, fontWeight: "bold"}}>Delete</Text>
@@ -680,8 +680,8 @@ function SellerBidsScreen({ route, navigation }) {
               <View style={{marginTop: 12, gap: 8}}>
                 <TextInput style={styles.input} placeholder="Counter amount ($)" placeholderTextColor="#999999" keyboardType="numeric" value={counterAmt} onChangeText={setCounterAmt} />
                 <TextInput style={styles.input} placeholder="Note to buyer (optional)" placeholderTextColor="#999999" value={counterMsg} onChangeText={setCounterMsg} />
-                <TouchableOpacity style={styles.sellerButton} onPress={() => handleCounter(bid)} disabled={counteringSubmit}>
-                  <Text style={styles.sellerButtonText}>{counteringSubmit ? "Sending..." : "Send Counter"}</Text>
+                <TouchableOpacity style={styles.dealerButton} onPress={() => handleCounter(bid)} disabled={counteringSubmit}>
+                  <Text style={styles.dealerButtonText}>{counteringSubmit ? "Sending..." : "Send Counter"}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setCounteringBidId(null)}>
                   <Text style={styles.backText}>Cancel</Text>
@@ -869,7 +869,7 @@ function BrowseCarsScreen({ navigation }) {
           <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
           {listing.runs === false && <Text style={styles.conditionBadge}>Not Running</Text>}
           {listing.needsTow === true && <Text style={styles.conditionBadge}>Needs Tow</Text>}
-          {myBidListingIds.includes(listing.id) ? <Text style={{color: "#2ecc71", fontSize: 14, marginTop: 8, fontWeight: "bold"}}>You bid on this ✓</Text> : <Text style={styles.bidButton2}>Place Bid →</Text>}
+          {myBidListingIds.includes(listing.id) ? <Text style={{color: "#27AE60", fontSize: 14, marginTop: 8, fontWeight: "bold"}}>You bid on this ✓</Text> : <Text style={styles.bidButton2}>Place Bid →</Text>}
         </TouchableOpacity>
       ))}
     </ScrollView>
@@ -984,16 +984,16 @@ function PlaceBidScreen({ route, navigation }) {
         <Text style={styles.sectionLabel}>Pickup Time</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, pickupTime === "morning" && styles.toggleActive]} onPress={() => setPickupTime("morning")}>
-            <Text style={styles.toggleText}>Morning</Text>
+            <Text style={[styles.toggleText, pickupTime === "morning" && styles.toggleTextActive]}>Morning</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.toggleButton, pickupTime === "afternoon" && styles.toggleActive]} onPress={() => setPickupTime("afternoon")}>
-            <Text style={styles.toggleText}>Afternoon</Text>
+            <Text style={[styles.toggleText, pickupTime === "afternoon" && styles.toggleTextActive]}>Afternoon</Text>
           </TouchableOpacity>
         </View>
         <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
         <TextInput style={styles.input} placeholder="Private note for yourself (optional)" placeholderTextColor="#999999" value={internalNote} onChangeText={setInternalNote} />
-        <TouchableOpacity style={styles.sellerButton} onPress={handleSubmitBid}>
-          <Text style={styles.sellerButtonText}>{loading ? "Placing Bid..." : "Submit Bid"}</Text>
+        <TouchableOpacity style={styles.dealerButton} onPress={handleSubmitBid}>
+          <Text style={styles.dealerButtonText}>{loading ? "Placing Bid..." : "Submit Bid"}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -1158,7 +1158,7 @@ function CreateListingScreen({ navigation }) {
         />
         {decodingVin ? <Text style={styles.listingDetail}>Decoding VIN...</Text> : null}
         {vinError ? <Text style={{color: "#c0392b", fontSize: 14, marginTop: 4}}>{vinError}</Text> : null}
-        {vinDecoded ? <Text style={{color: "#2ecc71", fontSize: 14, marginTop: 4}}>Decoded: {vinDecoded}</Text> : null}
+        {vinDecoded ? <Text style={{color: "#27AE60", fontSize: 14, marginTop: 4}}>Decoded: {vinDecoded}</Text> : null}
         <View style={styles.pickerRow}>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
             <Picker key={"year-" + pickerResetKey} selectedValue={year} onValueChange={(val) => setYear(val)} style={styles.picker}>
@@ -1195,93 +1195,93 @@ function CreateListingScreen({ navigation }) {
         </View>
         <Text style={styles.sectionLabel}>Condition - tap to toggle</Text>
         <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, runs ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setRuns(!runs)}>
-            <Text style={styles.toggleText}>{runs ? "Runs" : "Not Running"}</Text>
+          <TouchableOpacity style={[styles.toggleButton, styles.toggleActive]} onPress={() => setRuns(!runs)}>
+            <Text style={[styles.toggleText, styles.toggleTextActive]}>{runs ? "Runs" : "Not Running"}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, hasKeys ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasKeys(!hasKeys)}>
-            <Text style={styles.toggleText}>{hasKeys ? "Has Keys" : "No Keys"}</Text>
+          <TouchableOpacity style={[styles.toggleButton, styles.toggleActive]} onPress={() => setHasKeys(!hasKeys)}>
+            <Text style={[styles.toggleText, styles.toggleTextActive]}>{hasKeys ? "Has Keys" : "No Keys"}</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, hasTitle ? styles.toggleActive : styles.toggleActiveRed]} onPress={() => setHasTitle(!hasTitle)}>
-            <Text style={styles.toggleText}>{hasTitle ? "Drivable" : "Not Drivable"}</Text>
+          <TouchableOpacity style={[styles.toggleButton, styles.toggleActive]} onPress={() => setHasTitle(!hasTitle)}>
+            <Text style={[styles.toggleText, styles.toggleTextActive]}>{hasTitle ? "Drivable" : "Not Drivable"}</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Title Status</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, titleStatus === "clean" && styles.toggleActive]} onPress={() => setTitleStatus("clean")}>
-            <Text style={styles.toggleText}>Clean Title</Text>
+            <Text style={[styles.toggleText, titleStatus === "clean" && styles.toggleTextActive]}>Clean Title</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, titleStatus === "rebuilt" && styles.toggleOrange]} onPress={() => setTitleStatus("rebuilt")}>
-            <Text style={styles.toggleText}>Rebuilt Salvage</Text>
+          <TouchableOpacity style={[styles.toggleButton, titleStatus === "rebuilt" && styles.toggleActive]} onPress={() => setTitleStatus("rebuilt")}>
+            <Text style={[styles.toggleText, titleStatus === "rebuilt" && styles.toggleTextActive]}>Rebuilt Salvage</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, titleStatus === "salvage" && styles.toggleActiveRed]} onPress={() => setTitleStatus("salvage")}>
-            <Text style={styles.toggleText}>Salvage Title</Text>
+          <TouchableOpacity style={[styles.toggleButton, titleStatus === "salvage" && styles.toggleActive]} onPress={() => setTitleStatus("salvage")}>
+            <Text style={[styles.toggleText, titleStatus === "salvage" && styles.toggleTextActive]}>Salvage Title</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Engine</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, engineStatus === "good" && styles.toggleActive]} onPress={() => setEngineStatus("good")}>
-            <Text style={styles.toggleText}>Good</Text>
+            <Text style={[styles.toggleText, engineStatus === "good" && styles.toggleTextActive]}>Good</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, engineStatus === "bad" && styles.toggleActiveRed]} onPress={() => setEngineStatus("bad")}>
-            <Text style={styles.toggleText}>Bad</Text>
+          <TouchableOpacity style={[styles.toggleButton, engineStatus === "bad" && styles.toggleActive]} onPress={() => setEngineStatus("bad")}>
+            <Text style={[styles.toggleText, engineStatus === "bad" && styles.toggleTextActive]}>Bad</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, engineStatus === "unknown" && styles.toggleOrange]} onPress={() => setEngineStatus("unknown")}>
-            <Text style={styles.toggleText}>Unknown</Text>
+          <TouchableOpacity style={[styles.toggleButton, engineStatus === "unknown" && styles.toggleActive]} onPress={() => setEngineStatus("unknown")}>
+            <Text style={[styles.toggleText, engineStatus === "unknown" && styles.toggleTextActive]}>Unknown</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Transmission</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, transStatus === "good" && styles.toggleActive]} onPress={() => setTransStatus("good")}>
-            <Text style={styles.toggleText}>Good</Text>
+            <Text style={[styles.toggleText, transStatus === "good" && styles.toggleTextActive]}>Good</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, transStatus === "bad" && styles.toggleActiveRed]} onPress={() => setTransStatus("bad")}>
-            <Text style={styles.toggleText}>Bad</Text>
+          <TouchableOpacity style={[styles.toggleButton, transStatus === "bad" && styles.toggleActive]} onPress={() => setTransStatus("bad")}>
+            <Text style={[styles.toggleText, transStatus === "bad" && styles.toggleTextActive]}>Bad</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, transStatus === "unknown" && styles.toggleOrange]} onPress={() => setTransStatus("unknown")}>
-            <Text style={styles.toggleText}>Unknown</Text>
+          <TouchableOpacity style={[styles.toggleButton, transStatus === "unknown" && styles.toggleActive]} onPress={() => setTransStatus("unknown")}>
+            <Text style={[styles.toggleText, transStatus === "unknown" && styles.toggleTextActive]}>Unknown</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Airbags</Text>
         <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, airbags === "deployed" && styles.toggleActiveRed]} onPress={() => setAirbags("deployed")}>
-            <Text style={styles.toggleText}>One or more deployed</Text>
+          <TouchableOpacity style={[styles.toggleButton, airbags === "deployed" && styles.toggleActive]} onPress={() => setAirbags("deployed")}>
+            <Text style={[styles.toggleText, airbags === "deployed" && styles.toggleTextActive]}>One or more deployed</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.toggleButton, airbags === "none" && styles.toggleActive]} onPress={() => setAirbags("none")}>
-            <Text style={styles.toggleText}>No airbags deployed</Text>
+            <Text style={[styles.toggleText, airbags === "none" && styles.toggleTextActive]}>No airbags deployed</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Tires</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, tires === "all4" && styles.toggleActive]} onPress={() => setTires("all4")}>
-            <Text style={styles.toggleText}>All 4 tires</Text>
+            <Text style={[styles.toggleText, tires === "all4" && styles.toggleTextActive]}>All 4 tires</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, tires === "missing" && styles.toggleActiveRed]} onPress={() => setTires("missing")}>
-            <Text style={styles.toggleText}>Missing 1 or more</Text>
+          <TouchableOpacity style={[styles.toggleButton, tires === "missing" && styles.toggleActive]} onPress={() => setTires("missing")}>
+            <Text style={[styles.toggleText, tires === "missing" && styles.toggleTextActive]}>Missing 1 or more</Text>
           </TouchableOpacity>
         </View>
-        <Text style={{color: "#1a3a6b", fontSize: 16, fontWeight: "bold", marginTop: 8, textTransform: "uppercase"}}>Vehicle Delivery</Text>
+        <Text style={styles.sectionLabel}>Vehicle Delivery</Text>
         <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, {paddingVertical: 18}, needsTow ? styles.toggleActiveRed : styles.toggleActive]} onPress={() => setNeedsTow(!needsTow)}>
-            <Text style={styles.toggleText}>{needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
+          <TouchableOpacity style={[styles.toggleButton, {paddingVertical: 18}, styles.toggleActive]} onPress={() => setNeedsTow(!needsTow)}>
+            <Text style={[styles.toggleText, styles.toggleTextActive]}>{needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Damage Level</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, damage === "none" && styles.toggleActive]} onPress={() => setDamage("none")}>
-            <Text style={styles.toggleText}>No Damage</Text>
+            <Text style={[styles.toggleText, damage === "none" && styles.toggleTextActive]}>No Damage</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, damage === "minor" && styles.toggleYellow]} onPress={() => setDamage("minor")}>
-            <Text style={styles.toggleText}>Minor</Text>
+          <TouchableOpacity style={[styles.toggleButton, damage === "minor" && styles.toggleActive]} onPress={() => setDamage("minor")}>
+            <Text style={[styles.toggleText, damage === "minor" && styles.toggleTextActive]}>Minor</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.toggleRow}>
-          <TouchableOpacity style={[styles.toggleButton, damage === "moderate" && styles.toggleOrange]} onPress={() => setDamage("moderate")}>
-            <Text style={styles.toggleText}>Moderate</Text>
+          <TouchableOpacity style={[styles.toggleButton, damage === "moderate" && styles.toggleActive]} onPress={() => setDamage("moderate")}>
+            <Text style={[styles.toggleText, damage === "moderate" && styles.toggleTextActive]}>Moderate</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleButton, damage === "major" && styles.toggleActiveRed]} onPress={() => setDamage("major")}>
-            <Text style={styles.toggleText}>Major Damage</Text>
+          <TouchableOpacity style={[styles.toggleButton, damage === "major" && styles.toggleActive]} onPress={() => setDamage("major")}>
+            <Text style={[styles.toggleText, damage === "major" && styles.toggleTextActive]}>Major Damage</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Notes</Text>
@@ -1415,7 +1415,7 @@ function ProfileScreen({ navigation }) {
         <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12}}>
           <Text style={styles.sectionLabel}>Personal Info</Text>
           <TouchableOpacity onPress={() => setEditing(!editing)}>
-            <Text style={{color: "#c0392b", fontWeight: "bold"}}>{editing ? "Cancel" : "Edit"}</Text>
+            <Text style={{color: "#1B2B5E", fontWeight: "bold"}}>{editing ? "Cancel" : "Edit"}</Text>
           </TouchableOpacity>
         </View>
         {editing ? (
@@ -1427,8 +1427,8 @@ function ProfileScreen({ navigation }) {
             <TextInput style={styles.input} placeholder="Phone" placeholderTextColor="#999999" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
             <TextInput style={styles.input} placeholder="ZIP Code" placeholderTextColor="#999999" keyboardType="numeric" value={zipCode} onChangeText={setZipCode} />
             <TextInput style={styles.input} placeholder="Company Name (optional)" placeholderTextColor="#999999" value={companyName} onChangeText={setCompanyName} />
-            <TouchableOpacity style={styles.sellerButton} onPress={handleSave}>
-              <Text style={styles.sellerButtonText}>Save Changes</Text>
+            <TouchableOpacity style={styles.dealerButton} onPress={handleSave}>
+              <Text style={styles.dealerButtonText}>Save Changes</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -1444,7 +1444,7 @@ function ProfileScreen({ navigation }) {
         <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12}}>
           <Text style={styles.sectionLabel}>Buying Preferences</Text>
           <TouchableOpacity onPress={() => setEditingPrefs(!editingPrefs)}>
-            <Text style={{color: "#c0392b", fontWeight: "bold"}}>{editingPrefs ? "Cancel" : "Edit"}</Text>
+            <Text style={{color: "#1B2B5E", fontWeight: "bold"}}>{editingPrefs ? "Cancel" : "Edit"}</Text>
           </TouchableOpacity>
         </View>
         <Text style={[styles.listingDetail, {marginBottom: 12}]}>Get notified when a new listing matches your criteria.</Text>
@@ -1488,14 +1488,14 @@ function ProfileScreen({ navigation }) {
             <Text style={styles.sectionLabel}>Condition</Text>
             <View style={styles.toggleRow}>
               <TouchableOpacity style={[styles.toggleButton, prefRunsOnly && styles.toggleActive]} onPress={() => setPrefRunsOnly(!prefRunsOnly)}>
-                <Text style={styles.toggleText}>Runs only</Text>
+                <Text style={[styles.toggleText, prefRunsOnly && styles.toggleTextActive]}>Runs only</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.toggleButton, prefCleanTitleOnly && styles.toggleActive]} onPress={() => setPrefCleanTitleOnly(!prefCleanTitleOnly)}>
-                <Text style={styles.toggleText}>Clean title only</Text>
+                <Text style={[styles.toggleText, prefCleanTitleOnly && styles.toggleTextActive]}>Clean title only</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.sellerButton} onPress={handleSavePrefs}>
-              <Text style={styles.sellerButtonText}>Save Preferences</Text>
+            <TouchableOpacity style={styles.dealerButton} onPress={handleSavePrefs}>
+              <Text style={styles.dealerButtonText}>Save Preferences</Text>
             </TouchableOpacity>
           </>
         ) : prefZip ? (
@@ -1688,7 +1688,7 @@ function MyBidScreen({ route, navigation }) {
         </View>
       )}
       {myBid && myBid.status !== "accepted" && myBid.counterStatus === "pending" && (
-        <View style={[styles.listingCard, {borderColor: "#1a3a6b", borderWidth: 2}]}>
+        <View style={[styles.listingCard, {borderColor: "#1B2B5E", borderWidth: 2}]}>
           <Text style={styles.sectionLabel}>Seller Counteroffer</Text>
           <Text style={styles.bidAmount}>${myBid.counterAmount}</Text>
           {myBid.counterNote ? <Text style={styles.listingDetail}>Note: {myBid.counterNote}</Text> : null}
@@ -1712,17 +1712,17 @@ function MyBidScreen({ route, navigation }) {
           <Text style={styles.sectionLabel}>Pickup Time</Text>
           <View style={styles.toggleRow}>
             <TouchableOpacity style={[styles.toggleButton, pickupTime === "morning" && styles.toggleActive]} onPress={() => setPickupTime("morning")}>
-              <Text style={styles.toggleText}>Morning</Text>
+              <Text style={[styles.toggleText, pickupTime === "morning" && styles.toggleTextActive]}>Morning</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.toggleButton, pickupTime === "afternoon" && styles.toggleActive]} onPress={() => setPickupTime("afternoon")}>
-              <Text style={styles.toggleText}>Afternoon</Text>
+              <Text style={[styles.toggleText, pickupTime === "afternoon" && styles.toggleTextActive]}>Afternoon</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.sectionLabel}>Message to Seller</Text>
           <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
           <TextInput style={styles.input} placeholder="Private note for yourself (optional)" placeholderTextColor="#999999" value={internalNote} onChangeText={setInternalNote} />
-          <TouchableOpacity style={styles.sellerButton} onPress={handleRaiseBid}>
-            <Text style={styles.sellerButtonText}>{submitting ? "Updating..." : "Update Bid"}</Text>
+          <TouchableOpacity style={styles.dealerButton} onPress={handleRaiseBid}>
+            <Text style={styles.dealerButtonText}>{submitting ? "Updating..." : "Update Bid"}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1830,8 +1830,8 @@ function EditListingScreen({ route, navigation }) {
         </View>
         <Text style={styles.sectionLabel}>Notes</Text>
         <TextInput style={[styles.input, styles.textArea]} placeholder="Describe the condition, any issues, etc." placeholderTextColor="#999999" multiline numberOfLines={4} value={notes} onChangeText={setNotes} />
-        <TouchableOpacity style={styles.sellerButton} onPress={handleSave}>
-          <Text style={styles.sellerButtonText}>{loading ? "Saving..." : "Save Changes"}</Text>
+        <TouchableOpacity style={styles.dealerButton} onPress={handleSave}>
+          <Text style={styles.dealerButtonText}>{loading ? "Saving..." : "Save Changes"}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -1844,7 +1844,7 @@ const styles = StyleSheet.create({
   scrollContainer: { flex: 1, backgroundColor: "#f5f5f5", padding: 24 },
   scrollContent: { paddingBottom: 60 },
   header: { alignItems: "center", marginBottom: 60 },
-  logo: { fontSize: 42, fontWeight: "bold", color: "#c0392b", marginBottom: 12, letterSpacing: 1 },
+  logo: { fontSize: 42, fontWeight: "bold", color: "#1B2B5E", marginBottom: 12, letterSpacing: 1 },
   tagline: { fontSize: 16, color: "#555555", textAlign: "center", marginBottom: 40 },
   form: { width: "100%", gap: 16 },
   formContainer: { gap: 16 },
@@ -1853,22 +1853,22 @@ const styles = StyleSheet.create({
   buttons: { width: "100%", gap: 16 },
   sellerButton: { backgroundColor: "#c0392b", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 12 },
   sellerButtonText: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
-  dealerButton: { backgroundColor: "#1a3a6b", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 12 },
+  dealerButton: { backgroundColor: "#1B2B5E", padding: 18, borderRadius: 14, alignItems: "center", marginBottom: 12 },
   dealerButtonText: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
-  secondaryButton: { borderWidth: 1, borderColor: "#1a3a6b", padding: 18, borderRadius: 12, alignItems: "center" },
-  secondaryButtonText: { color: "#1a3a6b", fontSize: 18 },
-  activeToggle: { backgroundColor: "#c0392b", borderColor: "#c0392b" },
+  secondaryButton: { borderWidth: 1, borderColor: "#1B2B5E", padding: 18, borderRadius: 12, alignItems: "center" },
+  secondaryButtonText: { color: "#1B2B5E", fontSize: 18 },
+  activeToggle: { backgroundColor: "#1B2B5E", borderColor: "#1B2B5E" },
   backText: { color: "#555555", textAlign: "center", fontSize: 16, marginTop: 8 },
   dashboardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 60, marginBottom: 24 },
-  dashboardTitle: { fontSize: 30, fontWeight: "bold", color: "#1a3a6b" },
+  dashboardTitle: { fontSize: 30, fontWeight: "bold", color: "#1B2B5E" },
   logoutText: { color: "#c0392b", fontSize: 20, fontWeight: "bold" },
   emptyState: { alignItems: "center", marginTop: 60 },
   emptyStateText: { color: "#1a1a1a", fontSize: 18, fontWeight: "bold", marginBottom: 8 },
   emptyStateSubtext: { color: "#555555", fontSize: 14 },
-  sectionLabel: { color: "#1a3a6b", fontSize: 14, fontWeight: "bold", marginTop: 8, textTransform: "uppercase" },
+  sectionLabel: { color: "#1B2B5E", fontSize: 14, fontWeight: "bold", marginTop: 8, textTransform: "uppercase" },
   statsRow: { flexDirection: "row", gap: 16, marginBottom: 24 },
   statCard: { flex: 1, backgroundColor: "#ffffff", borderRadius: 16, padding: 16, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, borderWidth: 1, borderColor: "#eeeeee" },
-  statNumber: { fontSize: 36, fontWeight: "bold", color: "#c0392b" },
+  statNumber: { fontSize: 36, fontWeight: "bold", color: "#1B2B5E" },
   statLabel: { fontSize: 14, color: "#555555", marginTop: 4 },
   listingCard: { backgroundColor: "#ffffff", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, borderWidth: 1, borderColor: "#eeeeee" },
   listingCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
@@ -1876,18 +1876,18 @@ const styles = StyleSheet.create({
   listingDetail: { color: "#555555", fontSize: 14, marginBottom: 4 },
   listingPhoto: { width: "100%", height: 200, borderRadius: 12, marginBottom: 12 },
   bidListingPhoto: { width: 120, height: 90, borderRadius: 8, marginRight: 8 },
-  viewBidsText: { color: "#c0392b", fontSize: 14, marginTop: 8, fontWeight: "bold" },
-  bidButton2: { color: "#c0392b", fontSize: 14, marginTop: 8, fontWeight: "bold" },
-  soldCard: { opacity: 0.7, borderWidth: 1, borderColor: "#2ecc71" },
-  soldBadge: { color: "#2ecc71", fontSize: 12, fontWeight: "bold" },
-  conditionBadge: { color: "#c0392b", fontSize: 12, fontWeight: "bold", marginTop: 4 },
+  viewBidsText: { color: "#1B2B5E", fontSize: 14, marginTop: 8, fontWeight: "bold" },
+  bidButton2: { color: "#1B2B5E", fontSize: 14, marginTop: 8, fontWeight: "bold" },
+  soldCard: { opacity: 0.7, borderWidth: 1, borderColor: "#27AE60" },
+  soldBadge: { color: "#27AE60", fontSize: 12, fontWeight: "bold" },
+  conditionBadge: { color: "#1B2B5E", fontSize: 12, fontWeight: "bold", marginTop: 4 },
   bidCard: { backgroundColor: "#ffffff", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, borderWidth: 1, borderColor: "#eeeeee" },
-  acceptedCard: { borderWidth: 2, borderColor: "#2ecc71" },
+  acceptedCard: { borderWidth: 2, borderColor: "#27AE60" },
   bidAmount: { color: "#1a1a1a", fontSize: 24, fontWeight: "bold", marginBottom: 8 },
-  highestBadge: { color: "#c0392b", fontSize: 12, fontWeight: "bold", marginBottom: 8 },
+  highestBadge: { color: "#1B2B5E", fontSize: 12, fontWeight: "bold", marginBottom: 8 },
   counterPending: { padding: 12, backgroundColor: "#f0f0f0", borderRadius: 8, marginTop: 12 },
-  acceptedBadge: { color: "#2ecc71", fontSize: 12, fontWeight: "bold", marginBottom: 8 },
-  acceptButton: { backgroundColor: "#2ecc71", padding: 12, borderRadius: 8, alignItems: "center", marginTop: 12 },
+  acceptedBadge: { color: "#27AE60", fontSize: 12, fontWeight: "bold", marginBottom: 8 },
+  acceptButton: { backgroundColor: "#27AE60", padding: 12, borderRadius: 8, alignItems: "center", marginTop: 12 },
   acceptedButton: { backgroundColor: "#888888" },
   acceptButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "bold" },
   pickerContainer: { backgroundColor: "#ffffff", borderRadius: 12, marginBottom: 4, height: 58, overflow: "hidden", justifyContent: "center", borderWidth: 1, borderColor: "#dddddd" },
@@ -1896,13 +1896,14 @@ const styles = StyleSheet.create({
   picker: { color: "#000000" },
   toggleRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
   toggleButton: { flex: 1, padding: 14, borderRadius: 12, alignItems: "center", backgroundColor: "#f0f0f0", borderWidth: 1, borderColor: "#dddddd" },
-  toggleActive: { backgroundColor: "#2ecc71", borderColor: "#2ecc71" },
-  toggleActiveRed: { backgroundColor: "#c0392b", borderColor: "#c0392b" },
-  toggleOrange: { backgroundColor: "#e67e22", borderColor: "#e67e22" },
-  toggleYellow: { backgroundColor: "#f1c40f", borderColor: "#f1c40f" },
-  toggleText: { coloror: "#1a1a1a", fontSize: 18, fontWeight: "bold" },
-  photoButton: { backgroundColor: "#ffffff", borderRadius: 12, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#1a3a6b", marginBottom: 8 },
-  photoButtonText: { color: "#1a3a6b", fontSize: 16 },
+  toggleActive: { backgroundColor: "#1B2B5E", borderColor: "#1B2B5E" },
+  toggleActiveRed: { backgroundColor: "#1B2B5E", borderColor: "#1B2B5E" },
+  toggleOrange: { backgroundColor: "#1B2B5E", borderColor: "#1B2B5E" },
+  toggleYellow: { backgroundColor: "#1B2B5E", borderColor: "#1B2B5E" },
+  toggleText: { color: "#1a1a1a", fontSize: 18, fontWeight: "bold" },
+  toggleTextActive: { color: "#ffffff" },
+  photoButton: { backgroundColor: "#ffffff", borderRadius: 12, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#1B2B5E", marginBottom: 8 },
+  photoButtonText: { color: "#1B2B5E", fontSize: 16 },
   photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
   photoWrapper: { position: "relative" },
   photoThumb: { width: 90, height: 90, borderRadius: 10 },
@@ -1911,18 +1912,18 @@ const styles = StyleSheet.create({
   filterContainer: { gap: 8, marginBottom: 16 },
   passwordRow: { flexDirection: "row", gap: 8, alignItems: "center", marginBottom: 8 },
   eyeButton: { backgroundColor: "#ffffff", padding: 16, borderRadius: 12, borderWidth: 1, borderColor: "#dddddd", justifyContent: "center" },
-  eyeText: { color: "#1a3a6b", fontSize: 14, fontWeight: "bold" },
+  eyeText: { color: "#1B2B5E", fontSize: 14, fontWeight: "bold" },
   passwordRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   eyeButton: { backgroundColor: "#ffffff", padding: 16, borderRadius: 12, borderWidth: 1, borderColor: "#dddddd", justifyContent: "center" },
-  eyeText: { color: "#1a3a6b", fontSize: 14, fontWeight: "bold" },
-  filterButton: { backgroundColor: "#c0392b", padding: 14, borderRadius: 12, alignItems: "center" },
+  eyeText: { color: "#1B2B5E", fontSize: 14, fontWeight: "bold" },
+  filterButton: { backgroundColor: "#1B2B5E", padding: 14, borderRadius: 12, alignItems: "center" },
   filterButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "bold" },
   zipRow: { flexDirection: "row", gap: 8, alignItems: "center" },
-  locationButton: { backgroundColor: "#1a3a6b", padding: 14, borderRadius: 12, justifyContent: "center", alignItems: "center", minWidth: 80 },
+  locationButton: { backgroundColor: "#1B2B5E", padding: 14, borderRadius: 12, justifyContent: "center", alignItems: "center", minWidth: 80 },
   locationButtonText: { color: "#ffffff", fontSize: 14, fontWeight: "bold" },
   chipsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 8 },
   chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: "#f0f0f0", borderWidth: 1, borderColor: "#dddddd" },
-  chipActive: { backgroundColor: "#c0392b", borderColor: "#c0392b" },
+  chipActive: { backgroundColor: "#1B2B5E", borderColor: "#1B2B5E" },
   chipText: { color: "#1a1a1a", fontSize: 14 },
   chipTextActive: { color: "#ffffff", fontWeight: "bold" },
 });
