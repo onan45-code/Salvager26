@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, Alert, ScrollView, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, Alert, ScrollView, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useState, useEffect } from 'react';
@@ -14,6 +14,8 @@ import * as Location from 'expo-location';
 import { getDistance } from 'geolib';
 
 const Stack = createStackNavigator();
+
+const PLATFORM_FEE_PERCENT = 5;
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
@@ -48,6 +50,7 @@ const CAR_DATA = {
   "Kia": ["Optima", "Sorento", "Sportage", "Soul", "Forte", "Telluride", "Stinger", "Niro", "Carnival"],
   "Subaru": ["Outback", "Forester", "Crosstrek", "Impreza", "Legacy", "Ascent", "WRX", "BRZ"],
   "Volkswagen": ["Jetta", "Passat", "Tiguan", "Atlas", "Golf", "GTI", "Beetle", "Touareg"],
+  "Volvo": ["S60", "S90", "V60", "V90", "XC40", "XC60", "XC90", "C40", "EX30", "EX90", "S40", "C30", "C70", "XC70"],
   "Chrysler": ["300", "Pacifica", "Town and Country", "200", "PT Cruiser"],
   "Buick": ["Enclave", "Encore", "LaCrosse", "Verano", "Envision", "Regal"],
   "Cadillac": ["Escalade", "XT5", "CTS", "ATS", "SRX", "Eldorado", "DeVille"],
@@ -77,6 +80,7 @@ const TRIM_DATA = {
   "Kia": ["LX", "S", "EX", "GT-Line", "SX", "SX Prestige", "GT", "Other"],
   "Subaru": ["Base", "Premium", "Sport", "Limited", "Touring", "Onyx Edition", "Wilderness", "Other"],
   "Volkswagen": ["S", "SE", "SEL", "R-Line", "GTI", "GLI", "R", "Other"],
+  "Volvo": ["Momentum", "Inscription", "R-Design", "T5", "T6", "T8", "B5", "B6", "Cross Country", "Recharge", "Polestar Engineered", "Ultimate", "Plus", "Core", "Other"],
   "Chrysler": ["Touring", "Touring-L", "Limited", "Pinnacle", "300S", "300C", "Other"],
   "Buick": ["Preferred", "Essence", "Sport Touring", "Avenir", "Other"],
   "Cadillac": ["Luxury", "Premium Luxury", "Sport", "Platinum", "V-Series", "Other"],
@@ -105,6 +109,59 @@ async function registerForPushNotifications() {
   if (status !== 'granted') return null;
   const token = await Notifications.getExpoPushTokenAsync({ projectId: "aa722540-034a-4737-9e73-1efc9e4dd59c" });
   return token.data;
+}
+
+async function getZipCoordsCached(zip, cache) {
+  if (!zip) return null;
+  if (cache[zip] !== undefined) return cache[zip];
+  try {
+    const r = await fetch("https://api.zippopotam.us/us/" + zip);
+    if (!r.ok) { cache[zip] = null; return null; }
+    const data = await r.json();
+    const coords = { latitude: parseFloat(data.places[0].latitude), longitude: parseFloat(data.places[0].longitude) };
+    cache[zip] = coords;
+    return coords;
+  } catch(e) { cache[zip] = null; return null; }
+}
+
+async function notifyMatchingUsers(listing) {
+  try {
+    const usersSnap = await getDocs(collection(db, "users"));
+    const cache = {};
+    const listingCoords = await getZipCoordsCached(listing.zip, cache);
+    for (const userDoc of usersSnap.docs) {
+      const u = userDoc.data();
+      if (u.uid === listing.sellerId) continue;
+      if (!u.pushToken) continue;
+      const prefs = u.buyingPreferences;
+      if (!prefs || !prefs.zip) continue;
+      if (Array.isArray(prefs.makes) && prefs.makes.length > 0 && !prefs.makes.includes(listing.make)) continue;
+      const yr = parseInt(listing.year) || 0;
+      if (prefs.yearFrom && yr < parseInt(prefs.yearFrom)) continue;
+      if (prefs.yearTo && yr > parseInt(prefs.yearTo)) continue;
+      if (prefs.runsOnly && listing.runs !== true) continue;
+      if (prefs.cleanTitleOnly && listing.titleStatus !== "clean") continue;
+      const radius = parseFloat(prefs.radius || "99999");
+      if (radius < 99999) {
+        if (!listingCoords) continue;
+        const userCoords = await getZipCoordsCached(prefs.zip, cache);
+        if (!userCoords) continue;
+        const distMiles = getDistance(userCoords, listingCoords) / 1609.34;
+        if (distMiles > radius) continue;
+      }
+      try {
+        await fetch("https://exp.host/--/api/v2/push/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: u.pushToken,
+            title: "New car matching your preferences",
+            body: listing.year + " " + listing.make + " " + listing.model + (listing.city ? " in " + listing.city : ""),
+          }),
+        });
+      } catch(e) {}
+    }
+  } catch(e) {}
 }
 
 export default function App() {
@@ -239,7 +296,8 @@ function LoginScreen({ navigation, route }) {
   };
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <StatusBar style="dark" />
       <Text style={styles.logo}>{mode === "login" ? "Welcome Back" : "Create Account"}</Text>
       <Text style={styles.tagline}>Enter your details to continue</Text>
@@ -289,6 +347,7 @@ function LoginScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -328,7 +387,8 @@ function DashboardScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <StatusBar style="dark" />
       <View style={styles.dashboardHeader}>
         <Text style={styles.logo}>Salvager</Text>
@@ -379,6 +439,7 @@ function DashboardScreen({ navigation }) {
         </View>
       )}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -401,7 +462,8 @@ function MyListingsScreen({ navigation }) {
     return unsubscribe;
   }, [navigation]);
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>My Listings</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -436,6 +498,7 @@ function MyListingsScreen({ navigation }) {
         </TouchableOpacity>
       ))}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -445,6 +508,42 @@ function SellerBidsScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [counteringBidId, setCounteringBidId] = useState(null);
+  const [counterAmt, setCounterAmt] = useState("");
+  const [counterMsg, setCounterMsg] = useState("");
+  const [counteringSubmit, setCounteringSubmit] = useState(false);
+
+  const handleCounter = async (bid) => {
+    if (!counterAmt) { Alert.alert("Error", "Please enter a counter amount"); return; }
+    setCounteringSubmit(true);
+    try {
+      const amt = parseFloat(counterAmt);
+      await updateDoc(doc(db, "bids", bid.id), { counterAmount: amt, counterNote: counterMsg, counterStatus: "pending" });
+      try {
+        const buyerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", bid.buyerId)));
+        if (!buyerSnap.empty) {
+          const buyerToken = buyerSnap.docs[0].data().pushToken;
+          if (buyerToken) {
+            await fetch("https://exp.host/--/api/v2/push/send", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: buyerToken,
+                title: "Counteroffer received",
+                body: "Seller countered at $" + amt + " for the " + listing.year + " " + listing.make + " " + listing.model,
+              }),
+            });
+          }
+        }
+      } catch(e) {}
+      setBids(bids.map(b => b.id === bid.id ? { ...b, counterAmount: amt, counterNote: counterMsg, counterStatus: "pending" } : b));
+      setCounteringBidId(null);
+      setCounterAmt("");
+      setCounterMsg("");
+      Alert.alert("Sent", "Counteroffer sent to buyer.");
+    } catch(e) { Alert.alert("Error", e.message); }
+    setCounteringSubmit(false);
+  };
 
   const handleDeleteListing = async () => {
     Alert.alert("Delete Listing", "Are you sure you want to delete this listing?", [
@@ -480,23 +579,32 @@ function SellerBidsScreen({ route, navigation }) {
       { text: "Accept", onPress: async () => {
         setAccepting(true);
         try {
-          await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail });
-          await updateDoc(doc(db, "bids", bid.id), { status: "accepted" });
+          let buyerPhone = "";
+          let sellerPhone = "";
+          let buyerToken = "";
           try {
             const buyerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", bid.buyerId)));
             if (!buyerSnap.empty) {
-              const buyerToken = buyerSnap.docs[0].data().pushToken;
-              if (buyerToken) {
-                await fetch("https://exp.host/--/api/v2/push/send", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    to: buyerToken,
-                    title: "Your offer was accepted!",
-                    body: "Your $" + bid.amount + " bid on the " + listing.year + " " + listing.make + " " + listing.model + " was accepted. Seller: " + auth.currentUser.email,
-                  }),
-                });
-              }
+              const b = buyerSnap.docs[0].data();
+              buyerPhone = b.phone || "";
+              buyerToken = b.pushToken || "";
+            }
+            const sellerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", auth.currentUser.uid)));
+            if (!sellerSnap.empty) sellerPhone = sellerSnap.docs[0].data().phone || "";
+          } catch(e) {}
+          await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail, soldToPhone: buyerPhone, sellerPhone: sellerPhone });
+          await updateDoc(doc(db, "bids", bid.id), { status: "accepted", buyerPhone: buyerPhone, sellerPhone: sellerPhone });
+          try {
+            if (buyerToken) {
+              await fetch("https://exp.host/--/api/v2/push/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  to: buyerToken,
+                  title: "Your offer was accepted!",
+                  body: "Your $" + bid.amount + " bid on the " + listing.year + " " + listing.make + " " + listing.model + " was accepted. Seller: " + auth.currentUser.email,
+                }),
+              });
             }
           } catch(e) {}
           Alert.alert("Deal Done!", "Sold for $" + bid.amount + ". Buyer: " + bid.buyerEmail);
@@ -506,7 +614,8 @@ function SellerBidsScreen({ route, navigation }) {
     ]);
   };
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>Bids</Text>
         <View style={{flexDirection: "row", gap: 16}}>
@@ -532,7 +641,13 @@ function SellerBidsScreen({ route, navigation }) {
         <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
         <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
         <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
-        {listing.status === "sold" && <Text style={styles.soldBadge}>SOLD - ${listing.soldPrice}</Text>}
+        {listing.status === "sold" && (
+          <>
+            <Text style={styles.soldBadge}>SOLD - ${listing.soldPrice}</Text>
+            <Text style={styles.listingDetail}>Platform fee ({PLATFORM_FEE_PERCENT}%): -${Math.round(listing.soldPrice * PLATFORM_FEE_PERCENT / 100)}</Text>
+            <Text style={[styles.listingDetail, {fontWeight: "bold", color: "#1a1a1a"}]}>Seller net: ${listing.soldPrice - Math.round(listing.soldPrice * PLATFORM_FEE_PERCENT / 100)}</Text>
+          </>
+        )}
       </View>
       {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : bids.length === 0 ? (
         <View style={styles.emptyState}>
@@ -546,17 +661,48 @@ function SellerBidsScreen({ route, navigation }) {
           {bid.status === "accepted" && <Text style={styles.acceptedBadge}>ACCEPTED</Text>}
           <Text style={styles.bidAmount}>${bid.amount}</Text>
           {bid.towingIncluded !== undefined && <Text style={styles.listingDetail}>Towing: {bid.towingIncluded ? "Included in bid" : "Not included"}</Text>}
-          {bid.status === "accepted" ? <Text style={styles.listingDetail}>Buyer: {bid.buyerEmail}</Text> : <Text style={styles.listingDetail}>Buyer: Contact hidden until offer accepted</Text>}
+          {bid.pickupTime ? <Text style={styles.listingDetail}>Pickup: {bid.pickupTime === "morning" ? "Morning" : "Afternoon"}</Text> : null}
+          {bid.status === "accepted" ? (
+            <>
+              <Text style={styles.listingDetail}>Buyer: {bid.buyerEmail}</Text>
+              {bid.buyerPhone ? <Text style={styles.listingDetail}>Phone: {bid.buyerPhone}</Text> : null}
+            </>
+          ) : <Text style={styles.listingDetail}>Buyer: Contact hidden until offer accepted</Text>}
           {bid.note ? <Text style={styles.listingDetail}>Note: {bid.note}</Text> : null}
           <Text style={styles.listingDetail}>{formatBidDate(bid.createdAt)}</Text>
-          {listing.status !== "sold" ? (
-            <TouchableOpacity style={[styles.acceptButton, bid.status === "accepted" && styles.acceptedButton]} onPress={() => bid.status !== "accepted" && handleAcceptOffer(bid)} disabled={accepting || bid.status === "accepted"}>
-              <Text style={styles.acceptButtonText}>{bid.status === "accepted" ? "Offer Accepted" : accepting ? "Processing..." : "Accept Offer"}</Text>
-            </TouchableOpacity>
-          ) : null}
+          {listing.status !== "sold" && bid.status !== "accepted" && (
+            bid.counterStatus === "pending" ? (
+              <View style={styles.counterPending}>
+                <Text style={[styles.listingDetail, {fontWeight: "bold"}]}>Counter sent: ${bid.counterAmount}</Text>
+                <Text style={styles.listingDetail}>Awaiting buyer response</Text>
+              </View>
+            ) : counteringBidId === bid.id ? (
+              <View style={{marginTop: 12, gap: 8}}>
+                <TextInput style={styles.input} placeholder="Counter amount ($)" placeholderTextColor="#999999" keyboardType="numeric" value={counterAmt} onChangeText={setCounterAmt} />
+                <TextInput style={styles.input} placeholder="Note to buyer (optional)" placeholderTextColor="#999999" value={counterMsg} onChangeText={setCounterMsg} />
+                <TouchableOpacity style={styles.sellerButton} onPress={() => handleCounter(bid)} disabled={counteringSubmit}>
+                  <Text style={styles.sellerButtonText}>{counteringSubmit ? "Sending..." : "Send Counter"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setCounteringBidId(null)}>
+                  <Text style={styles.backText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                {bid.counterStatus === "declined" && <Text style={[styles.listingDetail, {color: "#c0392b", marginTop: 8}]}>Buyer declined your ${bid.counterAmount} counter</Text>}
+                <TouchableOpacity style={styles.acceptButton} onPress={() => handleAcceptOffer(bid)} disabled={accepting}>
+                  <Text style={styles.acceptButtonText}>{accepting ? "Processing..." : "Accept Offer"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.dealerButton, {marginTop: 8, marginBottom: 0}]} onPress={() => { setCounteringBidId(bid.id); setCounterAmt(""); setCounterMsg(""); }}>
+                  <Text style={styles.dealerButtonText}>Counteroffer</Text>
+                </TouchableOpacity>
+              </>
+            )
+          )}
         </View>
       ))}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -656,11 +802,13 @@ function BrowseCarsScreen({ navigation }) {
       } catch (error) { Alert.alert("Error", error.message); }
       setLoading(false);
     };
-    fetchListings();
-  }, []);
+    const unsubscribe = navigation.addListener("focus", fetchListings);
+    return unsubscribe;
+  }, [navigation]);
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>Browse Cars</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -725,6 +873,7 @@ function BrowseCarsScreen({ navigation }) {
         </TouchableOpacity>
       ))}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -732,16 +881,50 @@ function PlaceBidScreen({ route, navigation }) {
   const { listing } = route.params;
   const [amount, setAmount] = useState("");
   const [towingIncluded, setTowingIncluded] = useState(false);
+  const [pickupTime, setPickupTime] = useState("");
   const [note, setNote] = useState("");
+  const [internalNote, setInternalNote] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingExisting, setCheckingExisting] = useState(true);
+
+  useEffect(() => {
+    const checkExisting = async () => {
+      try {
+        const user = auth.currentUser;
+        const snap = await getDocs(query(collection(db, "bids"), where("listingId", "==", listing.id), where("buyerId", "==", user.uid)));
+        if (!snap.empty) {
+          navigation.replace("MyBid", { listing });
+          return;
+        }
+      } catch(e) {}
+      setCheckingExisting(false);
+    };
+    checkExisting();
+  }, []);
+
+  if (checkingExisting) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.emptyStateText}>Loading...</Text>
+      </View>
+    );
+  }
+
   const handleSubmitBid = async () => {
     if (!amount) { Alert.alert("Error", "Please enter a bid amount"); return; }
     setLoading(true);
     try {
       const user = auth.currentUser;
+      const dupSnap = await getDocs(query(collection(db, "bids"), where("listingId", "==", listing.id), where("buyerId", "==", user.uid)));
+      if (!dupSnap.empty) {
+        setLoading(false);
+        Alert.alert("Already bid", "You've already placed a bid on this listing. Opening it now.");
+        navigation.replace("MyBid", { listing });
+        return;
+      }
       await addDoc(collection(db, "bids"), {
         listingId: listing.id, buyerId: user.uid, buyerEmail: user.email,
-        amount: parseFloat(amount), towingIncluded, note, status: "pending", createdAt: serverTimestamp(),
+        amount: parseFloat(amount), towingIncluded, pickupTime, note, internalNote, status: "pending", createdAt: serverTimestamp(),
       });
       Alert.alert("Success", "Your bid has been placed!");
       try {
@@ -766,7 +949,8 @@ function PlaceBidScreen({ route, navigation }) {
     setLoading(false);
   };
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>Place Bid</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -797,12 +981,23 @@ function PlaceBidScreen({ route, navigation }) {
             <Text style={[styles.secondaryButtonText, towingIncluded && {color: "#ffffff"}]}>{towingIncluded ? "Towing Included in Bid" : "Towing NOT Included"}</Text>
           </TouchableOpacity>
         )}
+        <Text style={styles.sectionLabel}>Pickup Time</Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, pickupTime === "morning" && styles.toggleActive]} onPress={() => setPickupTime("morning")}>
+            <Text style={styles.toggleText}>Morning</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.toggleButton, pickupTime === "afternoon" && styles.toggleActive]} onPress={() => setPickupTime("afternoon")}>
+            <Text style={styles.toggleText}>Afternoon</Text>
+          </TouchableOpacity>
+        </View>
         <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
+        <TextInput style={styles.input} placeholder="Private note for yourself (optional)" placeholderTextColor="#999999" value={internalNote} onChangeText={setInternalNote} />
         <TouchableOpacity style={styles.sellerButton} onPress={handleSubmitBid}>
           <Text style={styles.sellerButtonText}>{loading ? "Placing Bid..." : "Submit Bid"}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -813,6 +1008,11 @@ function CreateListingScreen({ navigation }) {
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [trim, setTrim] = useState("");
+  const [vin, setVin] = useState("");
+  const [decodingVin, setDecodingVin] = useState(false);
+  const [vinError, setVinError] = useState("");
+  const [vinDecoded, setVinDecoded] = useState("");
+  const [pickerResetKey, setPickerResetKey] = useState(0);
   const [mileage, setMileage] = useState("");
   const [city, setCity] = useState("");
   const [zip, setZip] = useState("");
@@ -849,6 +1049,54 @@ function CreateListingScreen({ navigation }) {
     ]);
   };
 
+  const decodeVin = async (v) => {
+    if (v.length !== 17) return;
+    setDecodingVin(true);
+    setVinError("");
+    try {
+      const response = await fetch("https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/" + v + "?format=json");
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const data = await response.json();
+      const result = (data.Results && data.Results[0]) || {};
+      const decodedYear = (result.ModelYear || "").trim();
+      const decodedMake = (result.Make || "").trim();
+      const decodedModel = (result.Model || "").trim();
+      console.log("VIN decode:", { decodedYear, decodedMake, decodedModel });
+      if (!decodedYear && !decodedMake && !decodedModel) {
+        setVinError("Couldn't decode this VIN. Please fill in the fields manually.");
+        setDecodingVin(false);
+        return;
+      }
+      let matchedMake = "";
+      if (decodedMake) {
+        const lower = decodedMake.toLowerCase();
+        matchedMake =
+          Object.keys(CAR_DATA).find(k => k.toLowerCase() === lower) ||
+          Object.keys(CAR_DATA).find(k => lower.includes(k.toLowerCase())) ||
+          Object.keys(CAR_DATA).find(k => k.toLowerCase().includes(lower)) ||
+          "Other";
+      }
+      let matchedModel = "";
+      if (decodedModel && matchedMake) {
+        const models = CAR_DATA[matchedMake] || [];
+        const lower = decodedModel.toLowerCase();
+        matchedModel =
+          models.find(m => m.toLowerCase() === lower) ||
+          models.find(m => lower.includes(m.toLowerCase())) ||
+          models.find(m => m.toLowerCase().includes(lower)) ||
+          "Other";
+      }
+      setPickerResetKey(k => k + 1);
+      if (decodedYear) setYear(decodedYear);
+      if (matchedMake) setMake(matchedMake);
+      if (matchedModel) setModel(matchedModel);
+      setVinDecoded([decodedYear, decodedMake, decodedModel].filter(Boolean).join(" "));
+    } catch(e) {
+      setVinError("Couldn't decode this VIN. Please fill in the fields manually.");
+    }
+    setDecodingVin(false);
+  };
+
   const uploadPhotos = async (photoUris) => {
     const uploadedUrls = [];
     for (const uri of photoUris) {
@@ -869,18 +1117,21 @@ function CreateListingScreen({ navigation }) {
     try {
       const user = auth.currentUser;
       const uploadedPhotos = photos.length > 0 ? await uploadPhotos(photos) : [];
-      await addDoc(collection(db, "listings"), {
-        year, make, model, trim, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, titleStatus, engineStatus, transStatus, airbags, tires, photos: uploadedPhotos,
+      const listingData = {
+        year, make, model, trim, vin, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, titleStatus, engineStatus, transStatus, airbags, tires, photos: uploadedPhotos,
         sellerId: user.uid, sellerEmail: user.email, createdAt: serverTimestamp(), status: "active",
-      });
+      };
+      await addDoc(collection(db, "listings"), listingData);
       Alert.alert("Success", "Listing created!");
+      notifyMatchingUsers(listingData).catch(() => {});
       navigation.goBack();
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
   };
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>List Your Car</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -889,15 +1140,34 @@ function CreateListingScreen({ navigation }) {
       </View>
       <View style={styles.formContainer}>
         <Text style={styles.sectionLabel}>Vehicle Info</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="VIN (optional, auto-fills below)"
+          placeholderTextColor="#999999"
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={17}
+          value={vin}
+          onChangeText={(t) => {
+            const clean = t.toUpperCase().replace(/\s/g, "");
+            setVin(clean);
+            setVinError("");
+            setVinDecoded("");
+            if (clean.length === 17) decodeVin(clean);
+          }}
+        />
+        {decodingVin ? <Text style={styles.listingDetail}>Decoding VIN...</Text> : null}
+        {vinError ? <Text style={{color: "#c0392b", fontSize: 14, marginTop: 4}}>{vinError}</Text> : null}
+        {vinDecoded ? <Text style={{color: "#2ecc71", fontSize: 14, marginTop: 4}}>Decoded: {vinDecoded}</Text> : null}
         <View style={styles.pickerRow}>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker selectedValue={year} onValueChange={(val) => setYear(val)} style={styles.picker}>
+            <Picker key={"year-" + pickerResetKey} selectedValue={year} onValueChange={(val) => setYear(val)} style={styles.picker}>
               <Picker.Item label="Year" value="" />
               {years.map(y => <Picker.Item key={y} label={y} value={y} />)}
             </Picker>
           </View>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker selectedValue={make} onValueChange={(val) => { setMake(val); setModel(""); setTrim(""); }} style={styles.picker}>
+            <Picker key={"make-" + pickerResetKey} selectedValue={make} onValueChange={(val) => { setMake(val); setModel(""); setTrim(""); }} style={styles.picker}>
               <Picker.Item label="Make" value="" />
               {makes.map(m => <Picker.Item key={m} label={m} value={m} />)}
             </Picker>
@@ -905,13 +1175,13 @@ function CreateListingScreen({ navigation }) {
         </View>
         <View style={styles.pickerRow}>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker selectedValue={model} onValueChange={(val) => setModel(val)} style={styles.picker} enabled={make !== ""}>
+            <Picker key={"model-" + make + "-" + pickerResetKey} selectedValue={model} onValueChange={(val) => setModel(val)} style={styles.picker} enabled={make !== ""}>
               <Picker.Item label="Model" value="" />
               {make ? CAR_DATA[make].map(m => <Picker.Item key={m} label={m} value={m} />) : []}
             </Picker>
           </View>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker selectedValue={trim} onValueChange={(val) => setTrim(val)} style={styles.picker}>
+            <Picker key={"trim-" + make + "-" + pickerResetKey} selectedValue={trim} onValueChange={(val) => setTrim(val)} style={styles.picker}>
               <Picker.Item label="Trim" value="" />
               {(make && TRIM_DATA[make] ? TRIM_DATA[make] : ["Base", "Sport", "Limited", "Premium", "Other"]).map(t => <Picker.Item key={t} label={t} value={t} />)}
             </Picker>
@@ -1035,6 +1305,7 @@ function CreateListingScreen({ navigation }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1047,6 +1318,14 @@ function ProfileScreen({ navigation }) {
   const [phone, setPhone] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [editingPrefs, setEditingPrefs] = useState(false);
+  const [prefZip, setPrefZip] = useState("");
+  const [prefRadius, setPrefRadius] = useState("50");
+  const [prefYearFrom, setPrefYearFrom] = useState("");
+  const [prefYearTo, setPrefYearTo] = useState("");
+  const [prefMakes, setPrefMakes] = useState([]);
+  const [prefRunsOnly, setPrefRunsOnly] = useState(false);
+  const [prefCleanTitleOnly, setPrefCleanTitleOnly] = useState(false);
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -1061,6 +1340,14 @@ function ProfileScreen({ navigation }) {
           setPhone(data.phone || "");
           setZipCode(data.zipCode || "");
           setCompanyName(data.companyName || "");
+          const bp = data.buyingPreferences || {};
+          setPrefZip(bp.zip || "");
+          setPrefRadius(bp.radius || "50");
+          setPrefYearFrom(bp.yearFrom || "");
+          setPrefYearTo(bp.yearTo || "");
+          setPrefMakes(Array.isArray(bp.makes) ? bp.makes : []);
+          setPrefRunsOnly(!!bp.runsOnly);
+          setPrefCleanTitleOnly(!!bp.cleanTitleOnly);
         }
       } catch(e) {}
       setLoading(false);
@@ -1084,6 +1371,27 @@ function ProfileScreen({ navigation }) {
     } catch(e) { Alert.alert("Error", e.message); }
   };
 
+  const handleSavePrefs = async () => {
+    try {
+      const prefs = { zip: prefZip, radius: prefRadius, yearFrom: prefYearFrom, yearTo: prefYearTo, makes: prefMakes, runsOnly: prefRunsOnly, cleanTitleOnly: prefCleanTitleOnly };
+      if (userData && userData.id) {
+        await updateDoc(doc(db, "users", userData.id), { buyingPreferences: prefs });
+      } else {
+        const newDoc = await addDoc(collection(db, "users"), {
+          uid: user.uid, email: user.email, firstName, lastName, phone, zipCode, companyName,
+          pushToken: "", buyingPreferences: prefs, createdAt: serverTimestamp()
+        });
+        setUserData({ id: newDoc.id, uid: user.uid, buyingPreferences: prefs });
+      }
+      Alert.alert("Saved", "We'll notify you when matching listings are posted.");
+      setEditingPrefs(false);
+    } catch(e) { Alert.alert("Error", e.message); }
+  };
+
+  const toggleMake = (m) => {
+    setPrefMakes(prefMakes.includes(m) ? prefMakes.filter(x => x !== m) : [...prefMakes, m]);
+  };
+
   if (loading) return (
     <View style={styles.container}>
       <Text style={styles.emptyStateText}>Loading...</Text>
@@ -1091,7 +1399,8 @@ function ProfileScreen({ navigation }) {
   );
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>My Profile</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -1131,7 +1440,78 @@ function ProfileScreen({ navigation }) {
           </>
         )}
       </View>
+      <View style={styles.listingCard}>
+        <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12}}>
+          <Text style={styles.sectionLabel}>Buying Preferences</Text>
+          <TouchableOpacity onPress={() => setEditingPrefs(!editingPrefs)}>
+            <Text style={{color: "#c0392b", fontWeight: "bold"}}>{editingPrefs ? "Cancel" : "Edit"}</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={[styles.listingDetail, {marginBottom: 12}]}>Get notified when a new listing matches your criteria.</Text>
+        {editingPrefs ? (
+          <>
+            <Text style={styles.sectionLabel}>ZIP Code</Text>
+            <TextInput style={styles.input} placeholder="Your ZIP" placeholderTextColor="#999999" keyboardType="numeric" maxLength={5} value={prefZip} onChangeText={setPrefZip} />
+            <Text style={styles.sectionLabel}>Radius</Text>
+            <View style={styles.pickerContainer}>
+              <Picker selectedValue={prefRadius} onValueChange={setPrefRadius} style={styles.picker}>
+                <Picker.Item label="25 miles" value="25" />
+                <Picker.Item label="50 miles" value="50" />
+                <Picker.Item label="100 miles" value="100" />
+                <Picker.Item label="200 miles" value="200" />
+                <Picker.Item label="Any distance" value="99999" />
+              </Picker>
+            </View>
+            <Text style={styles.sectionLabel}>Year Range</Text>
+            <View style={styles.pickerRow}>
+              <View style={[styles.pickerContainer, styles.pickerHalf]}>
+                <Picker selectedValue={prefYearFrom} onValueChange={setPrefYearFrom} style={styles.picker}>
+                  <Picker.Item label="From Year" value="" />
+                  {Array.from({length: 36}, (_, i) => (1990 + i).toString()).map(y => <Picker.Item key={y} label={y} value={y} />)}
+                </Picker>
+              </View>
+              <View style={[styles.pickerContainer, styles.pickerHalf]}>
+                <Picker selectedValue={prefYearTo} onValueChange={setPrefYearTo} style={styles.picker}>
+                  <Picker.Item label="To Year" value="" />
+                  {Array.from({length: 36}, (_, i) => (1990 + i).toString()).map(y => <Picker.Item key={y} label={y} value={y} />)}
+                </Picker>
+              </View>
+            </View>
+            <Text style={styles.sectionLabel}>Makes (none = all)</Text>
+            <View style={styles.chipsContainer}>
+              {Object.keys(CAR_DATA).sort().map(m => (
+                <TouchableOpacity key={m} style={[styles.chip, prefMakes.includes(m) && styles.chipActive]} onPress={() => toggleMake(m)}>
+                  <Text style={[styles.chipText, prefMakes.includes(m) && styles.chipTextActive]}>{m}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.sectionLabel}>Condition</Text>
+            <View style={styles.toggleRow}>
+              <TouchableOpacity style={[styles.toggleButton, prefRunsOnly && styles.toggleActive]} onPress={() => setPrefRunsOnly(!prefRunsOnly)}>
+                <Text style={styles.toggleText}>Runs only</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.toggleButton, prefCleanTitleOnly && styles.toggleActive]} onPress={() => setPrefCleanTitleOnly(!prefCleanTitleOnly)}>
+                <Text style={styles.toggleText}>Clean title only</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.sellerButton} onPress={handleSavePrefs}>
+              <Text style={styles.sellerButtonText}>Save Preferences</Text>
+            </TouchableOpacity>
+          </>
+        ) : prefZip ? (
+          <>
+            <Text style={styles.listingDetail}>Within {prefRadius === "99999" ? "any distance" : prefRadius + " miles"} of {prefZip}</Text>
+            <Text style={styles.listingDetail}>Years: {prefYearFrom || "any"} – {prefYearTo || "any"}</Text>
+            <Text style={styles.listingDetail}>Makes: {prefMakes.length === 0 ? "All makes" : prefMakes.join(", ")}</Text>
+            {prefRunsOnly ? <Text style={styles.listingDetail}>Runs only</Text> : null}
+            {prefCleanTitleOnly ? <Text style={styles.listingDetail}>Clean title only</Text> : null}
+          </>
+        ) : (
+          <Text style={styles.listingDetail}>No preferences set. Tap Edit to get notified about new listings.</Text>
+        )}
+      </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1141,8 +1521,11 @@ function MyBidScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState("");
   const [towingIncluded, setTowingIncluded] = useState(false);
+  const [pickupTime, setPickupTime] = useState("");
   const [note, setNote] = useState("");
+  const [internalNote, setInternalNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [counterRespSubmit, setCounterRespSubmit] = useState(false);
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -1154,13 +1537,84 @@ function MyBidScreen({ route, navigation }) {
           setMyBid(bidData);
           setAmount(bidData.amount.toString());
           setTowingIncluded(bidData.towingIncluded || false);
+          setPickupTime(bidData.pickupTime || "");
           setNote(bidData.note || "");
+          setInternalNote(bidData.internalNote || "");
         }
       } catch(e) {}
       setLoading(false);
     };
     fetchMyBid();
   }, []);
+
+  const handleAcceptCounter = async () => {
+    setCounterRespSubmit(true);
+    try {
+      const counterAmt = myBid.counterAmount;
+      let sellerPhone = "";
+      let buyerPhone = "";
+      let sellerToken = "";
+      try {
+        const sellerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", listing.sellerId)));
+        if (!sellerSnap.empty) {
+          const s = sellerSnap.docs[0].data();
+          sellerPhone = s.phone || "";
+          sellerToken = s.pushToken || "";
+        }
+        const buyerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", user.uid)));
+        if (!buyerSnap.empty) buyerPhone = buyerSnap.docs[0].data().phone || "";
+      } catch(e) {}
+      await updateDoc(doc(db, "bids", myBid.id), { amount: counterAmt, status: "accepted", counterStatus: "accepted", buyerPhone, sellerPhone });
+      await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: counterAmt, soldToEmail: user.email, soldToPhone: buyerPhone, sellerPhone });
+      try {
+        if (sellerToken) {
+          await fetch("https://exp.host/--/api/v2/push/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: sellerToken,
+              title: "Counter accepted!",
+              body: "Buyer accepted your $" + counterAmt + " counter on the " + listing.year + " " + listing.make + " " + listing.model + ". Buyer: " + user.email,
+            }),
+          });
+        }
+      } catch(e) {}
+      setMyBid({ ...myBid, amount: counterAmt, status: "accepted", counterStatus: "accepted", buyerPhone, sellerPhone });
+      Alert.alert("Deal Done!", "You've accepted the counter at $" + counterAmt);
+    } catch(e) { Alert.alert("Error", e.message); }
+    setCounterRespSubmit(false);
+  };
+
+  const handleDeclineCounter = () => {
+    Alert.alert("Decline Counter", "Decline this counteroffer? Your original bid will remain active.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Decline", style: "destructive", onPress: async () => {
+        setCounterRespSubmit(true);
+        try {
+          await updateDoc(doc(db, "bids", myBid.id), { counterStatus: "declined" });
+          try {
+            const sellerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", listing.sellerId)));
+            if (!sellerSnap.empty) {
+              const sellerToken = sellerSnap.docs[0].data().pushToken;
+              if (sellerToken) {
+                await fetch("https://exp.host/--/api/v2/push/send", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    to: sellerToken,
+                    title: "Counter declined",
+                    body: "Buyer declined your $" + myBid.counterAmount + " counter on the " + listing.year + " " + listing.make + " " + listing.model,
+                  }),
+                });
+              }
+            }
+          } catch(e) {}
+          setMyBid({ ...myBid, counterStatus: "declined" });
+        } catch(e) { Alert.alert("Error", e.message); }
+        setCounterRespSubmit(false);
+      }}
+    ]);
+  };
 
   const handleRaiseBid = async () => {
     if (!amount) { Alert.alert("Error", "Please enter a bid amount"); return; }
@@ -1170,7 +1624,7 @@ function MyBidScreen({ route, navigation }) {
     }
     setSubmitting(true);
     try {
-      await updateDoc(doc(db, "bids", myBid.id), { amount: parseFloat(amount), towingIncluded, note });
+      await updateDoc(doc(db, "bids", myBid.id), { amount: parseFloat(amount), towingIncluded, pickupTime, note, internalNote });
       Alert.alert("Success", "Your bid has been updated!");
       navigation.goBack();
     } catch(e) { Alert.alert("Error", e.message); }
@@ -1184,7 +1638,8 @@ function MyBidScreen({ route, navigation }) {
   );
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>My Bids</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -1220,10 +1675,32 @@ function MyBidScreen({ route, navigation }) {
           <Text style={styles.bidAmount}>${myBid.amount}</Text>
           <Text style={styles.listingDetail}>Status: {myBid.status === "accepted" ? "Accepted" : "Pending"}</Text>
           {myBid.towingIncluded && <Text style={styles.listingDetail}>Towing included in bid</Text>}
+          {myBid.pickupTime ? <Text style={styles.listingDetail}>Pickup: {myBid.pickupTime === "morning" ? "Morning" : "Afternoon"}</Text> : null}
           {myBid.note ? <Text style={styles.listingDetail}>Note: {myBid.note}</Text> : null}
+          {myBid.internalNote ? <Text style={styles.listingDetail}>Private: {myBid.internalNote}</Text> : null}
         </View>
       )}
-      {myBid && myBid.status !== "accepted" && (
+      {myBid && myBid.status === "accepted" && (
+        <View style={styles.listingCard}>
+          <Text style={styles.sectionLabel}>Seller Contact</Text>
+          <Text style={styles.listingDetail}>Email: {listing.sellerEmail}</Text>
+          {myBid.sellerPhone ? <Text style={styles.listingDetail}>Phone: {myBid.sellerPhone}</Text> : null}
+        </View>
+      )}
+      {myBid && myBid.status !== "accepted" && myBid.counterStatus === "pending" && (
+        <View style={[styles.listingCard, {borderColor: "#1a3a6b", borderWidth: 2}]}>
+          <Text style={styles.sectionLabel}>Seller Counteroffer</Text>
+          <Text style={styles.bidAmount}>${myBid.counterAmount}</Text>
+          {myBid.counterNote ? <Text style={styles.listingDetail}>Note: {myBid.counterNote}</Text> : null}
+          <TouchableOpacity style={styles.acceptButton} onPress={handleAcceptCounter} disabled={counterRespSubmit}>
+            <Text style={styles.acceptButtonText}>{counterRespSubmit ? "Processing..." : "Accept Counter"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.dealerButton, {backgroundColor: "#c0392b", marginTop: 8, marginBottom: 0}]} onPress={handleDeclineCounter} disabled={counterRespSubmit}>
+            <Text style={styles.dealerButtonText}>Decline</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {myBid && myBid.status !== "accepted" && myBid.counterStatus !== "pending" && (
         <View style={styles.formContainer}>
           <Text style={styles.sectionLabel}>Raise Your Bid</Text>
           <TextInput style={styles.input} placeholder="New Bid Amount ($)" placeholderTextColor="#999999" keyboardType="numeric" value={amount} onChangeText={setAmount} />
@@ -1232,14 +1709,25 @@ function MyBidScreen({ route, navigation }) {
               <Text style={[styles.secondaryButtonText, towingIncluded && {color: "#ffffff"}]}>{towingIncluded ? "Towing Included" : "Towing NOT Included"}</Text>
             </TouchableOpacity>
           )}
+          <Text style={styles.sectionLabel}>Pickup Time</Text>
+          <View style={styles.toggleRow}>
+            <TouchableOpacity style={[styles.toggleButton, pickupTime === "morning" && styles.toggleActive]} onPress={() => setPickupTime("morning")}>
+              <Text style={styles.toggleText}>Morning</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.toggleButton, pickupTime === "afternoon" && styles.toggleActive]} onPress={() => setPickupTime("afternoon")}>
+              <Text style={styles.toggleText}>Afternoon</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.sectionLabel}>Message to Seller</Text>
           <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
+          <TextInput style={styles.input} placeholder="Private note for yourself (optional)" placeholderTextColor="#999999" value={internalNote} onChangeText={setInternalNote} />
           <TouchableOpacity style={styles.sellerButton} onPress={handleRaiseBid}>
             <Text style={styles.sellerButtonText}>{submitting ? "Updating..." : "Update Bid"}</Text>
           </TouchableOpacity>
         </View>
       )}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1271,7 +1759,8 @@ function MyBidsScreen({ navigation }) {
   }, [navigation]);
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>My Bids</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -1293,10 +1782,12 @@ function MyBidsScreen({ navigation }) {
           <Text style={styles.bidAmount}>${bid.amount}</Text>
           {bid.status === "accepted" ? <Text style={styles.acceptedBadge}>ACCEPTED</Text> : <Text style={styles.listingDetail}>Status: Pending</Text>}
           {bid.towingIncluded && <Text style={styles.listingDetail}>Towing included</Text>}
+          {bid.pickupTime ? <Text style={styles.listingDetail}>Pickup: {bid.pickupTime === "morning" ? "Morning" : "Afternoon"}</Text> : null}
           <Text style={styles.listingDetail}>{formatBidDate(bid.createdAt)}</Text>
         </TouchableOpacity>
       ))}
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1319,7 +1810,8 @@ function EditListingScreen({ route, navigation }) {
   };
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>Edit Listing</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -1343,6 +1835,7 @@ function EditListingScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1392,6 +1885,7 @@ const styles = StyleSheet.create({
   acceptedCard: { borderWidth: 2, borderColor: "#2ecc71" },
   bidAmount: { color: "#1a1a1a", fontSize: 24, fontWeight: "bold", marginBottom: 8 },
   highestBadge: { color: "#c0392b", fontSize: 12, fontWeight: "bold", marginBottom: 8 },
+  counterPending: { padding: 12, backgroundColor: "#f0f0f0", borderRadius: 8, marginTop: 12 },
   acceptedBadge: { color: "#2ecc71", fontSize: 12, fontWeight: "bold", marginBottom: 8 },
   acceptButton: { backgroundColor: "#2ecc71", padding: 12, borderRadius: 8, alignItems: "center", marginTop: 12 },
   acceptedButton: { backgroundColor: "#888888" },
@@ -1426,5 +1920,10 @@ const styles = StyleSheet.create({
   zipRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   locationButton: { backgroundColor: "#1a3a6b", padding: 14, borderRadius: 12, justifyContent: "center", alignItems: "center", minWidth: 80 },
   locationButtonText: { color: "#ffffff", fontSize: 14, fontWeight: "bold" },
+  chipsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 8 },
+  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: "#f0f0f0", borderWidth: 1, borderColor: "#dddddd" },
+  chipActive: { backgroundColor: "#c0392b", borderColor: "#c0392b" },
+  chipText: { color: "#1a1a1a", fontSize: 14 },
+  chipTextActive: { color: "#ffffff", fontWeight: "bold" },
 });
 
