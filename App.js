@@ -921,7 +921,7 @@ function BrowseCarsScreen({ navigation }) {
 function PlaceBidScreen({ route, navigation }) {
   const { listing } = route.params;
   const [amount, setAmount] = useState("");
-  const [towingIncluded, setTowingIncluded] = useState(false);
+  const [towingIncluded, setTowingIncluded] = useState(listing.needsTow === true);
   const [pickupTime, setPickupTime] = useState("");
   const [note, setNote] = useState("");
   const [internalNote, setInternalNote] = useState("");
@@ -1028,9 +1028,12 @@ function PlaceBidScreen({ route, navigation }) {
             <Text style={[styles.toggleText, pickupTime === "afternoon" && styles.toggleTextActive]}>Afternoon</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={towingIncluded ? styles.towingToggleIn : styles.towingToggleOut} onPress={() => setTowingIncluded(!towingIncluded)}>
+        <TouchableOpacity style={towingIncluded ? styles.towingToggleIn : styles.towingToggleOut} onPress={() => setTowingIncluded(!towingIncluded)} disabled={listing.needsTow === true}>
           <Text style={styles.towingToggleText}>{towingIncluded ? "Towing Included" : "Towing NOT Included"}</Text>
         </TouchableOpacity>
+        {listing.needsTow === true && (
+          <Text style={styles.towingLockedNote}>This vehicle requires towing — towing must be included in your bid</Text>
+        )}
         <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
         <TextInput style={styles.input} placeholder="Private note for yourself (optional)" placeholderTextColor="#999999" value={internalNote} onChangeText={setInternalNote} />
         <TouchableOpacity style={styles.dealerButton} onPress={handleSubmitBid} disabled={loading}>
@@ -1971,5 +1974,6 @@ const styles = StyleSheet.create({
   towingToggleIn: { backgroundColor: "#27AE60", padding: 18, borderRadius: 14, alignItems: "center" },
   towingToggleOut: { backgroundColor: "#c0392b", padding: 18, borderRadius: 14, alignItems: "center" },
   towingToggleText: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
+  towingLockedNote: { color: "#555555", fontSize: 13, fontStyle: "italic", marginTop: -4 },
 });
 
