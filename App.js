@@ -1745,11 +1745,6 @@ function MyBidScreen({ route, navigation }) {
         <View style={styles.formContainer}>
           <Text style={styles.sectionLabel}>Raise Your Bid</Text>
           <TextInput style={styles.input} placeholder="New Bid Amount ($)" placeholderTextColor="#999999" keyboardType="numeric" value={amount} onChangeText={setAmount} />
-          {listing.needsTow && (
-            <TouchableOpacity style={[styles.secondaryButton, towingIncluded && styles.activeToggle]} onPress={() => setTowingIncluded(!towingIncluded)}>
-              <Text style={[styles.secondaryButtonText, towingIncluded && {color: "#ffffff"}]}>{towingIncluded ? "Towing Included" : "Towing NOT Included"}</Text>
-            </TouchableOpacity>
-          )}
           <Text style={styles.sectionLabel}>Pickup Time</Text>
           <View style={styles.toggleRow}>
             <TouchableOpacity style={[styles.toggleButton, pickupTime === "morning" && styles.toggleActive]} onPress={() => setPickupTime("morning")}>
@@ -1759,6 +1754,9 @@ function MyBidScreen({ route, navigation }) {
               <Text style={[styles.toggleText, pickupTime === "afternoon" && styles.toggleTextActive]}>Afternoon</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity style={towingIncluded ? styles.towingToggleIn : styles.towingToggleOut} onPress={() => setTowingIncluded(!towingIncluded)}>
+            <Text style={styles.towingToggleText}>{towingIncluded ? "Towing Included" : "Towing NOT Included"}</Text>
+          </TouchableOpacity>
           <Text style={styles.sectionLabel}>Message to Seller</Text>
           <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
           <TextInput style={styles.input} placeholder="Private note for yourself (optional)" placeholderTextColor="#999999" value={internalNote} onChangeText={setInternalNote} />
