@@ -1265,25 +1265,25 @@ function CreateListingScreen({ navigation }) {
         <Text style={styles.sectionLabel}>Engine</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, engineStatus === "good" && styles.toggleActive]} onPress={() => setEngineStatus("good")}>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.toggleText, engineStatus === "good" && styles.toggleTextActive]}>Good</Text>
+            <Text numberOfLines={1} style={[styles.toggleText, styles.toggleTextCompact, engineStatus === "good" && styles.toggleTextActive]}>Good</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.toggleButton, engineStatus === "bad" && styles.toggleActive]} onPress={() => setEngineStatus("bad")}>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.toggleText, engineStatus === "bad" && styles.toggleTextActive]}>Bad</Text>
+            <Text numberOfLines={1} style={[styles.toggleText, styles.toggleTextCompact, engineStatus === "bad" && styles.toggleTextActive]}>Bad</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.toggleButton, engineStatus === "unknown" && styles.toggleActive]} onPress={() => setEngineStatus("unknown")}>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.toggleText, engineStatus === "unknown" && styles.toggleTextActive]}>Unknown</Text>
+            <Text numberOfLines={1} style={[styles.toggleText, styles.toggleTextCompact, engineStatus === "unknown" && styles.toggleTextActive]}>Unknown</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Transmission</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, transStatus === "good" && styles.toggleActive]} onPress={() => setTransStatus("good")}>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.toggleText, transStatus === "good" && styles.toggleTextActive]}>Good</Text>
+            <Text numberOfLines={1} style={[styles.toggleText, styles.toggleTextCompact, transStatus === "good" && styles.toggleTextActive]}>Good</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.toggleButton, transStatus === "bad" && styles.toggleActive]} onPress={() => setTransStatus("bad")}>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.toggleText, transStatus === "bad" && styles.toggleTextActive]}>Bad</Text>
+            <Text numberOfLines={1} style={[styles.toggleText, styles.toggleTextCompact, transStatus === "bad" && styles.toggleTextActive]}>Bad</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.toggleButton, transStatus === "unknown" && styles.toggleActive]} onPress={() => setTransStatus("unknown")}>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.toggleText, transStatus === "unknown" && styles.toggleTextActive]}>Unknown</Text>
+            <Text numberOfLines={1} style={[styles.toggleText, styles.toggleTextCompact, transStatus === "unknown" && styles.toggleTextActive]}>Unknown</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Airbags</Text>
@@ -1938,12 +1938,13 @@ const styles = StyleSheet.create({
   pickerHalf: { flex: 1 },
   picker: { color: "#000000" },
   toggleRow: { flexDirection: "row", gap: 12, marginBottom: 8 },
-  toggleButton: { flex: 1, paddingVertical: 14, paddingHorizontal: 8, borderRadius: 12, alignItems: "center", backgroundColor: "#f0f0f0", borderWidth: 1, borderColor: "#dddddd" },
+  toggleButton: { flex: 1, minWidth: 90, paddingVertical: 14, paddingHorizontal: 8, borderRadius: 12, alignItems: "center", backgroundColor: "#f0f0f0", borderWidth: 1, borderColor: "#dddddd" },
   toggleActive: { backgroundColor: "#1B2B5E", borderColor: "#1B2B5E" },
   toggleActiveRed: { backgroundColor: "#1B2B5E", borderColor: "#1B2B5E" },
   toggleOrange: { backgroundColor: "#1B2B5E", borderColor: "#1B2B5E" },
   toggleYellow: { backgroundColor: "#1B2B5E", borderColor: "#1B2B5E" },
   toggleText: { color: "#1a1a1a", fontSize: 18, fontWeight: "bold" },
+  toggleTextCompact: { fontSize: 14 },
   toggleTextActive: { color: "#ffffff" },
   photoButton: { backgroundColor: "#ffffff", borderRadius: 12, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#1B2B5E", marginBottom: 8 },
   photoButtonText: { color: "#1B2B5E", fontSize: 16 },
