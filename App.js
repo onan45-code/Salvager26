@@ -747,7 +747,7 @@ function BrowseCarsScreen({ navigation }) {
   const [yearFrom, setYearFrom] = useState("");
   const [yearTo, setYearTo] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
-  const [myBidListingIds, setMyBidListingIds] = useState([]);
+  const [myBidsByListing, setMyBidsByListing] = useState({});
 
   const detectLocation = async () => {
     setLocationLoading(true);
@@ -827,7 +827,9 @@ function BrowseCarsScreen({ navigation }) {
         const filtered = data.filter(l => l.sellerId !== auth.currentUser.uid && l.status !== "sold" && l.status !== "deleted");
         filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         const myBidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", auth.currentUser.uid)));
-        setMyBidListingIds(myBidsSnap.docs.map(d => d.data().listingId));
+        const bidMap = {};
+        myBidsSnap.docs.forEach(d => { const b = d.data(); bidMap[b.listingId] = b.amount; });
+        setMyBidsByListing(bidMap);
         setListings(filtered);
         setFilteredListings(filtered);
       } catch (error) { Alert.alert("Error", error.message); }
@@ -887,7 +889,7 @@ function BrowseCarsScreen({ navigation }) {
           <Text style={styles.emptyStateSubtext}>Try expanding your search radius or year range, or check back later for new listings.</Text>
         </View>
       ) : filteredListings.map(listing => (
-        <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => myBidListingIds.includes(listing.id) ? navigation.navigate("MyBid", { listing }) : navigation.navigate("PlaceBid", { listing })}>
+        <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => myBidsByListing[listing.id] !== undefined ? navigation.navigate("MyBid", { listing }) : navigation.navigate("PlaceBid", { listing })}>
           {listing.photos && listing.photos.length > 0 && (
             <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
           )}
@@ -900,7 +902,7 @@ function BrowseCarsScreen({ navigation }) {
           <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
           {listing.runs === false && <Text style={styles.conditionBadge}>Not Running</Text>}
           {listing.needsTow === true && <Text style={styles.conditionBadge}>Needs Tow</Text>}
-          {myBidListingIds.includes(listing.id) ? <Text style={{color: "#27AE60", fontSize: 14, marginTop: 8, fontWeight: "bold"}}>You bid on this ✓</Text> : <Text style={styles.bidButton2}>Place Bid →</Text>}
+          {myBidsByListing[listing.id] !== undefined ? <Text style={{color: "#27AE60", fontSize: 14, marginTop: 8, fontWeight: "bold"}}>You bid ${myBidsByListing[listing.id]} ✓</Text> : <Text style={styles.bidButton2}>Place Bid →</Text>}
         </TouchableOpacity>
       ))}
     </ScrollView>
