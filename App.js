@@ -124,6 +124,21 @@ async function getZipCoordsCached(zip, cache) {
   } catch(e) { cache[zip] = null; return null; }
 }
 
+async function attachBidCounts(listings) {
+  if (listings.length === 0) return listings;
+  const ids = listings.map(l => l.id);
+  const counts = {};
+  for (let i = 0; i < ids.length; i += 30) {
+    const chunk = ids.slice(i, i + 30);
+    const snap = await getDocs(query(collection(db, "bids"), where("listingId", "in", chunk)));
+    snap.docs.forEach(d => {
+      const lid = d.data().listingId;
+      counts[lid] = (counts[lid] || 0) + 1;
+    });
+  }
+  return listings.map(l => ({ ...l, bidCount: counts[l.id] || 0 }));
+}
+
 async function notifyMatchingUsers(listing) {
   try {
     const usersSnap = await getDocs(collection(db, "users"));
@@ -370,7 +385,8 @@ function DashboardScreen({ navigation }) {
         setListingCount(listingsData.filter(l => l.status !== "deleted").length);
         const activeListings = listingsData.filter(l => l.status !== "sold" && l.status !== "deleted");
         activeListings.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-        setMyListings(activeListings);
+        const withCounts = await attachBidCounts(activeListings);
+        setMyListings(withCounts);
         const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
         setBidCount(bidsSnap.size);
         
@@ -433,7 +449,7 @@ function DashboardScreen({ navigation }) {
               <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
               <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
               <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
-              <Text style={styles.viewBidsText}>View Bids →</Text>
+              <Text style={styles.viewBidsText}>{listing.bidCount > 0 ? "View Bids →" : "No bids yet"}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -453,7 +469,10 @@ function MyListingsScreen({ navigation }) {
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.status !== "deleted");
       data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-      setListings(data);
+      const active = data.filter(l => l.status !== "sold");
+      const activeWithCounts = await attachBidCounts(active);
+      const countById = Object.fromEntries(activeWithCounts.map(l => [l.id, l.bidCount]));
+      setListings(data.map(l => ({ ...l, bidCount: countById[l.id] || 0 })));
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
   };
@@ -494,7 +513,7 @@ function MyListingsScreen({ navigation }) {
           <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
           <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
           <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
-          <Text style={styles.viewBidsText}>{listing.status === "sold" ? "View Deal" : "View Bids"} →</Text>
+          <Text style={styles.viewBidsText}>{listing.status === "sold" ? "View Deal →" : listing.bidCount > 0 ? "View Bids →" : "No bids yet"}</Text>
         </TouchableOpacity>
       ))}
     </ScrollView>
