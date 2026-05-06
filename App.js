@@ -368,6 +368,7 @@ function LoginScreen({ navigation, route }) {
 
 function DashboardScreen({ navigation }) {
   const [listingCount, setListingCount] = useState(0);
+  const [soldCount, setSoldCount] = useState(0);
   const [bidCount, setBidCount] = useState(0);
   const [userName, setUserName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -384,6 +385,7 @@ function DashboardScreen({ navigation }) {
         const listingsData = listingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const activeListings = listingsData.filter(l => l.status !== "sold" && l.status !== "deleted");
         setListingCount(activeListings.length);
+        setSoldCount(listingsData.filter(l => l.status === "sold").length);
         const withCounts = await attachBidCounts(activeListings);
         withCounts.sort((a, b) => {
           if (b.bidCount !== a.bidCount) return b.bidCount - a.bidCount;
@@ -419,7 +421,11 @@ function DashboardScreen({ navigation }) {
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{listingCount}</Text>
-          <Text style={styles.statLabel}>My Listings</Text>
+          <Text style={styles.statLabel}>Active Listings</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{soldCount}</Text>
+          <Text style={styles.statLabel}>Sold</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{bidCount}</Text>
