@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const pkg = require\\('e:/AI-IT-Company/Clients/MarZeL/Salvager26/node_modules/react-native/package.json'\\); console.log\\(pkg.version\\); console.log\\(JSON.stringify\\(pkg.dependencies, null, 2\\)\\)\")"
+    ]
+  }
+}

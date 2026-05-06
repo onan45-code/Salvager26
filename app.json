@@ -3,10 +3,11 @@
     "name": "CashForCars",
     "slug": "CashForCars",
     "version": "1.0.0",
+    "platforms": ["ios", "android", "web"],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -26,7 +27,8 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "extra": {
       "eas": {
@@ -34,9 +36,7 @@
       }
     },
     "owner": "magamarc",
-    "plugins": [
-      "expo-barcode-scanner"
-    ],
+    "plugins": [],
     "runtimeVersion": {
       "policy": "appVersion"
     },
