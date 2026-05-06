@@ -476,6 +476,9 @@ function MyListingsScreen({ navigation }) {
       const countById = Object.fromEntries(activeWithCounts.map(l => [l.id, l.bidCount]));
       const withCounts = data.map(l => ({ ...l, bidCount: countById[l.id] || 0 }));
       withCounts.sort((a, b) => {
+        const aSold = a.status === "sold" ? 1 : 0;
+        const bSold = b.status === "sold" ? 1 : 0;
+        if (aSold !== bSold) return aSold - bSold;
         if (b.bidCount !== a.bidCount) return b.bidCount - a.bidCount;
         return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
       });
