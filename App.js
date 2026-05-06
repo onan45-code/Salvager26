@@ -218,6 +218,8 @@ export default function App() {
         <Stack.Screen name="EditListing" component={EditListingScreen} />
         <Stack.Screen name="MyBid" component={MyBidScreen} />
         <Stack.Screen name="MyBids" component={MyBidsScreen} />
+        <Stack.Screen name="MySoldListings" component={MySoldListingsScreen} />
+        <Stack.Screen name="MyPurchases" component={MyPurchasesScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -443,6 +445,12 @@ function DashboardScreen({ navigation }) {
       </TouchableOpacity>
       <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("MyBids")}>
         <Text style={styles.dealerButtonText}>My Bids</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("MySoldListings")}>
+        <Text style={styles.dealerButtonText}>My Sold Listings</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("MyPurchases")}>
+        <Text style={styles.dealerButtonText}>My Purchases</Text>
       </TouchableOpacity>
       {myListings.length > 0 && (
         <View>
@@ -1831,6 +1839,128 @@ function MyBidsScreen({ navigation }) {
           <Text style={styles.listingDetail}>{formatBidDate(bid.createdAt)}</Text>
         </TouchableOpacity>
       ))}
+    </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+function MySoldListingsScreen({ navigation }) {
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchSold = async () => {
+    try {
+      const user = auth.currentUser;
+      const snap = await getDocs(query(collection(db, "listings"), where("sellerId", "==", user.uid), where("status", "==", "sold")));
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setListings(data);
+    } catch(e) { Alert.alert("Error", e.message); }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const unsub = navigation.addListener("focus", fetchSold);
+    return unsub;
+  }, [navigation]);
+
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <View style={styles.dashboardHeader}>
+        <Text style={styles.dashboardTitle}>My Sold Listings</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.logoutText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+      {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : listings.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={{fontSize: 60, marginBottom: 16}}>🏷️</Text>
+          <Text style={styles.emptyStateText}>No sales yet</Text>
+          <Text style={styles.emptyStateSubtext}>Once you accept an offer on one of your listings, it'll show up here.</Text>
+        </View>
+      ) : listings.map(l => {
+        const fee = Math.round((l.soldPrice || 0) * PLATFORM_FEE_PERCENT / 100);
+        return (
+          <View key={l.id} style={[styles.listingCard, styles.acceptedCard]}>
+            {l.photos && l.photos.length > 0 && (
+              <Image source={{ uri: l.photos[0] }} style={styles.listingPhoto} />
+            )}
+            <Text style={styles.listingTitle}>{l.year} {l.make} {l.model}{l.trim ? " " + l.trim : ""}</Text>
+            <Text style={styles.listingDetail}>{l.city}, {l.zip}</Text>
+            <Text style={styles.bidAmount}>${l.soldPrice}</Text>
+            <Text style={styles.listingDetail}>Buyer: {l.soldToEmail || "—"}</Text>
+            {l.soldToPhone ? <Text style={styles.listingDetail}>Phone: {l.soldToPhone}</Text> : null}
+            <Text style={styles.listingDetail}>Platform fee ({PLATFORM_FEE_PERCENT}%): -${fee}</Text>
+            <Text style={[styles.listingDetail, {fontWeight: "bold", color: "#1a1a1a"}]}>Net: ${(l.soldPrice || 0) - fee}</Text>
+          </View>
+        );
+      })}
+    </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+function MyPurchasesScreen({ navigation }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPurchases = async () => {
+    try {
+      const user = auth.currentUser;
+      const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid), where("status", "==", "accepted")));
+      const bids = bidsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const enriched = await Promise.all(bids.map(async bid => {
+        try {
+          const listingSnap = await getDocs(query(collection(db, "listings"), where("__name__", "==", bid.listingId)));
+          const listing = listingSnap.empty ? null : { id: listingSnap.docs[0].id, ...listingSnap.docs[0].data() };
+          return { ...bid, listingInfo: listing };
+        } catch(e) { return bid; }
+      }));
+      enriched.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setItems(enriched);
+    } catch(e) { Alert.alert("Error", e.message); }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const unsub = navigation.addListener("focus", fetchPurchases);
+    return unsub;
+  }, [navigation]);
+
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <View style={styles.dashboardHeader}>
+        <Text style={styles.dashboardTitle}>My Purchases</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.logoutText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+      {loading ? <Text style={styles.emptyStateText}>Loading...</Text> : items.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={{fontSize: 60, marginBottom: 16}}>🛒</Text>
+          <Text style={styles.emptyStateText}>No purchases yet</Text>
+          <Text style={styles.emptyStateSubtext}>When a seller accepts one of your bids, the deal will show up here.</Text>
+        </View>
+      ) : items.map(item => {
+        const l = item.listingInfo;
+        return (
+          <View key={item.id} style={[styles.listingCard, styles.acceptedCard]}>
+            {l && l.photos && l.photos.length > 0 && (
+              <Image source={{ uri: l.photos[0] }} style={styles.listingPhoto} />
+            )}
+            <Text style={styles.listingTitle}>{l ? l.year + " " + l.make + " " + l.model + (l.trim ? " " + l.trim : "") : "Vehicle"}</Text>
+            {l ? <Text style={styles.listingDetail}>{l.city}, {l.zip}</Text> : null}
+            <Text style={styles.bidAmount}>${item.amount}</Text>
+            <Text style={styles.listingDetail}>Seller: {l?.sellerEmail || "—"}</Text>
+            {item.sellerPhone ? <Text style={styles.listingDetail}>Phone: {item.sellerPhone}</Text> : null}
+            {item.towingIncluded !== undefined && (item.towingIncluded
+              ? <View style={styles.towingBadgeIn}><Text style={styles.towingBadgeText}>Towing included</Text></View>
+              : <View style={styles.towingBadgeOut}><Text style={styles.towingBadgeText}>Towing not included</Text></View>)}
+          </View>
+        );
+      })}
     </ScrollView>
     </KeyboardAvoidingView>
   );
