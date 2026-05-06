@@ -1564,7 +1564,7 @@ function MyBidScreen({ route, navigation }) {
   const [myBid, setMyBid] = useState(null);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState("");
-  const [towingIncluded, setTowingIncluded] = useState(false);
+  const [towingIncluded, setTowingIncluded] = useState(listing.needsTow === true);
   const [pickupTime, setPickupTime] = useState("");
   const [note, setNote] = useState("");
   const [internalNote, setInternalNote] = useState("");
@@ -1580,7 +1580,7 @@ function MyBidScreen({ route, navigation }) {
           const bidData = { id: snap.docs[0].id, ...snap.docs[0].data() };
           setMyBid(bidData);
           setAmount(bidData.amount.toString());
-          setTowingIncluded(bidData.towingIncluded || false);
+          setTowingIncluded(listing.needsTow === true ? true : (bidData.towingIncluded || false));
           setPickupTime(bidData.pickupTime || "");
           setNote(bidData.note || "");
           setInternalNote(bidData.internalNote || "");
@@ -1757,9 +1757,12 @@ function MyBidScreen({ route, navigation }) {
               <Text style={[styles.toggleText, pickupTime === "afternoon" && styles.toggleTextActive]}>Afternoon</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity style={towingIncluded ? styles.towingToggleIn : styles.towingToggleOut} onPress={() => setTowingIncluded(!towingIncluded)}>
+          <TouchableOpacity style={towingIncluded ? styles.towingToggleIn : styles.towingToggleOut} onPress={() => setTowingIncluded(!towingIncluded)} disabled={listing.needsTow === true}>
             <Text style={styles.towingToggleText}>{towingIncluded ? "Towing Included" : "Towing NOT Included"}</Text>
           </TouchableOpacity>
+          {listing.needsTow === true && (
+            <Text style={styles.towingLockedNote}>This vehicle requires towing — towing must be included in your bid</Text>
+          )}
           <Text style={styles.sectionLabel}>Message to Seller</Text>
           <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
           <TextInput style={styles.input} placeholder="Private note for yourself (optional)" placeholderTextColor="#999999" value={internalNote} onChangeText={setInternalNote} />
