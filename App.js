@@ -384,8 +384,11 @@ function DashboardScreen({ navigation }) {
         const listingsData = listingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         setListingCount(listingsData.filter(l => l.status !== "deleted").length);
         const activeListings = listingsData.filter(l => l.status !== "sold" && l.status !== "deleted");
-        activeListings.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         const withCounts = await attachBidCounts(activeListings);
+        withCounts.sort((a, b) => {
+          if (b.bidCount !== a.bidCount) return b.bidCount - a.bidCount;
+          return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+        });
         setMyListings(withCounts);
         const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
         setBidCount(bidsSnap.size);
@@ -468,11 +471,15 @@ function MyListingsScreen({ navigation }) {
       const q = query(collection(db, "listings"), where("sellerId", "==", user.uid));
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.status !== "deleted");
-      data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       const active = data.filter(l => l.status !== "sold");
       const activeWithCounts = await attachBidCounts(active);
       const countById = Object.fromEntries(activeWithCounts.map(l => [l.id, l.bidCount]));
-      setListings(data.map(l => ({ ...l, bidCount: countById[l.id] || 0 })));
+      const withCounts = data.map(l => ({ ...l, bidCount: countById[l.id] || 0 }));
+      withCounts.sort((a, b) => {
+        if (b.bidCount !== a.bidCount) return b.bidCount - a.bidCount;
+        return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+      });
+      setListings(withCounts);
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
   };
