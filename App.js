@@ -1253,13 +1253,13 @@ function CreateListingScreen({ navigation }) {
         <Text style={styles.sectionLabel}>Title Status</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, titleStatus === "clean" && styles.toggleActive]} onPress={() => setTitleStatus("clean")}>
-            <Text style={[styles.toggleText, titleStatus === "clean" && styles.toggleTextActive]}>Clean Title</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.toggleText, titleStatus === "clean" && styles.toggleTextActive]}>Clean Title</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.toggleButton, titleStatus === "rebuilt" && styles.toggleActive]} onPress={() => setTitleStatus("rebuilt")}>
-            <Text style={[styles.toggleText, titleStatus === "rebuilt" && styles.toggleTextActive]}>Rebuilt Salvage</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.toggleText, titleStatus === "rebuilt" && styles.toggleTextActive]}>Rebuilt Salvage</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.toggleButton, titleStatus === "salvage" && styles.toggleActive]} onPress={() => setTitleStatus("salvage")}>
-            <Text style={[styles.toggleText, titleStatus === "salvage" && styles.toggleTextActive]}>Salvage Title</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.toggleText, titleStatus === "salvage" && styles.toggleTextActive]}>Salvage Title</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sectionLabel}>Engine</Text>
