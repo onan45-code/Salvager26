@@ -1019,11 +1019,6 @@ function PlaceBidScreen({ route, navigation }) {
       <View style={styles.formContainer}>
         <Text style={styles.sectionLabel}>Your Offer</Text>
         <TextInput style={styles.input} placeholder="Bid Amount ($)" placeholderTextColor="#999999" keyboardType="numeric" value={amount} onChangeText={setAmount} />
-        {listing.needsTow && (
-          <TouchableOpacity style={[styles.secondaryButton, towingIncluded && styles.activeToggle]} onPress={() => setTowingIncluded(!towingIncluded)}>
-            <Text style={[styles.secondaryButtonText, towingIncluded && {color: "#ffffff"}]}>{towingIncluded ? "Towing Included in Bid" : "Towing NOT Included"}</Text>
-          </TouchableOpacity>
-        )}
         <Text style={styles.sectionLabel}>Pickup Time</Text>
         <View style={styles.toggleRow}>
           <TouchableOpacity style={[styles.toggleButton, pickupTime === "morning" && styles.toggleActive]} onPress={() => setPickupTime("morning")}>
@@ -1033,6 +1028,9 @@ function PlaceBidScreen({ route, navigation }) {
             <Text style={[styles.toggleText, pickupTime === "afternoon" && styles.toggleTextActive]}>Afternoon</Text>
           </TouchableOpacity>
         </View>
+        <TouchableOpacity style={towingIncluded ? styles.towingToggleIn : styles.towingToggleOut} onPress={() => setTowingIncluded(!towingIncluded)}>
+          <Text style={styles.towingToggleText}>{towingIncluded ? "Towing Included" : "Towing NOT Included"}</Text>
+        </TouchableOpacity>
         <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
         <TextInput style={styles.input} placeholder="Private note for yourself (optional)" placeholderTextColor="#999999" value={internalNote} onChangeText={setInternalNote} />
         <TouchableOpacity style={styles.dealerButton} onPress={handleSubmitBid} disabled={loading}>
@@ -1972,5 +1970,8 @@ const styles = StyleSheet.create({
   towingBadgeOut: { alignSelf: "flex-start", backgroundColor: "#c0392b", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6, marginVertical: 4 },
   towingBadgeIn: { alignSelf: "flex-start", backgroundColor: "#27AE60", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6, marginVertical: 4 },
   towingBadgeText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
+  towingToggleIn: { backgroundColor: "#27AE60", padding: 18, borderRadius: 14, alignItems: "center" },
+  towingToggleOut: { backgroundColor: "#c0392b", padding: 18, borderRadius: 14, alignItems: "center" },
+  towingToggleText: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
 });
 
