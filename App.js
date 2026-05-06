@@ -5,7 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { useState, useEffect } from 'react';
 import { auth, db, storage } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -366,9 +366,9 @@ function DashboardScreen({ navigation }) {
         const userSnap = await getDocs(query(collection(db, "users"), where("uid", "==", user.uid)));
         if (!userSnap.empty) setUserName(userSnap.docs[0].data().firstName || "");
         const listingsSnap = await getDocs(query(collection(db, "listings"), where("sellerId", "==", user.uid)));
-        setListingCount(listingsSnap.size);
         const listingsData = listingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const activeListings = listingsData.filter(l => l.status !== "sold");
+        setListingCount(listingsData.filter(l => l.status !== "deleted").length);
+        const activeListings = listingsData.filter(l => l.status !== "sold" && l.status !== "deleted");
         activeListings.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         setMyListings(activeListings);
         const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
@@ -503,7 +503,7 @@ function MyListingsScreen({ navigation }) {
 }
 
 function SellerBidsScreen({ route, navigation }) {
-  const { listing } = route.params;
+  const [listing, setListing] = useState(route.params.listing);
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
@@ -594,6 +594,8 @@ function SellerBidsScreen({ route, navigation }) {
           } catch(e) {}
           await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail, soldToPhone: buyerPhone, sellerPhone: sellerPhone });
           await updateDoc(doc(db, "bids", bid.id), { status: "accepted", buyerPhone: buyerPhone, sellerPhone: sellerPhone });
+          setBids(bids.map(b => b.id === bid.id ? { ...b, status: "accepted", buyerPhone, sellerPhone } : b));
+          setListing({ ...listing, status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail, soldToPhone: buyerPhone, sellerPhone });
           try {
             if (buyerToken) {
               await fetch("https://exp.host/--/api/v2/push/send", {
@@ -793,7 +795,7 @@ function BrowseCarsScreen({ navigation }) {
       try {
         const snapshot = await getDocs(collection(db, "listings"));
         const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        const filtered = data.filter(l => l.sellerId !== auth.currentUser.uid && l.status !== "sold");
+        const filtered = data.filter(l => l.sellerId !== auth.currentUser.uid && l.status !== "sold" && l.status !== "deleted");
         filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         const myBidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", auth.currentUser.uid)));
         setMyBidListingIds(myBidsSnap.docs.map(d => d.data().listingId));
@@ -911,6 +913,7 @@ function PlaceBidScreen({ route, navigation }) {
   }
 
   const handleSubmitBid = async () => {
+    if (loading) return;
     if (!amount) { Alert.alert("Error", "Please enter a bid amount"); return; }
     setLoading(true);
     try {
@@ -922,7 +925,8 @@ function PlaceBidScreen({ route, navigation }) {
         navigation.replace("MyBid", { listing });
         return;
       }
-      await addDoc(collection(db, "bids"), {
+      const bidId = listing.id + "_" + user.uid;
+      await setDoc(doc(db, "bids", bidId), {
         listingId: listing.id, buyerId: user.uid, buyerEmail: user.email,
         amount: parseFloat(amount), towingIncluded, pickupTime, note, internalNote, status: "pending", createdAt: serverTimestamp(),
       });
@@ -992,7 +996,7 @@ function PlaceBidScreen({ route, navigation }) {
         </View>
         <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
         <TextInput style={styles.input} placeholder="Private note for yourself (optional)" placeholderTextColor="#999999" value={internalNote} onChangeText={setInternalNote} />
-        <TouchableOpacity style={styles.dealerButton} onPress={handleSubmitBid}>
+        <TouchableOpacity style={styles.dealerButton} onPress={handleSubmitBid} disabled={loading}>
           <Text style={styles.dealerButtonText}>{loading ? "Placing Bid..." : "Submit Bid"}</Text>
         </TouchableOpacity>
       </View>
