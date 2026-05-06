@@ -449,7 +449,7 @@ function DashboardScreen({ navigation }) {
               <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
               <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
               <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
-              <Text style={styles.viewBidsText}>{listing.bidCount > 0 ? "View Bids →" : "No bids yet"}</Text>
+              <Text style={styles.viewBidsText}>{listing.bidCount > 0 ? "View " + listing.bidCount + (listing.bidCount === 1 ? " Bid →" : " Bids →") : "No bids yet"}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -513,7 +513,7 @@ function MyListingsScreen({ navigation }) {
           <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
           <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
           <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
-          <Text style={styles.viewBidsText}>{listing.status === "sold" ? "View Deal →" : listing.bidCount > 0 ? "View Bids →" : "No bids yet"}</Text>
+          <Text style={styles.viewBidsText}>{listing.status === "sold" ? "View Deal →" : listing.bidCount > 0 ? "View " + listing.bidCount + (listing.bidCount === 1 ? " Bid →" : " Bids →") : "No bids yet"}</Text>
         </TouchableOpacity>
       ))}
     </ScrollView>
