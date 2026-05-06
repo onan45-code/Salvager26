@@ -697,7 +697,9 @@ function SellerBidsScreen({ route, navigation }) {
           {index === 0 && listing.status !== "sold" && <Text style={styles.highestBadge}>HIGHEST OFFER</Text>}
           {bid.status === "accepted" && <Text style={styles.acceptedBadge}>ACCEPTED</Text>}
           <Text style={styles.bidAmount}>${bid.amount}</Text>
-          {bid.towingIncluded !== undefined && <Text style={styles.listingDetail}>Towing: {bid.towingIncluded ? "Included in bid" : "Not included"}</Text>}
+          {bid.towingIncluded !== undefined && (bid.towingIncluded
+            ? <Text style={styles.listingDetail}>Towing: Included in bid</Text>
+            : <View style={styles.towingBadge}><Text style={styles.towingBadgeText}>Towing: Not included</Text></View>)}
           {bid.pickupTime ? <Text style={styles.listingDetail}>Pickup: {bid.pickupTime === "morning" ? "Morning" : "Afternoon"}</Text> : null}
           {bid.status === "accepted" ? (
             <>
@@ -1967,5 +1969,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: "#1B2B5E", borderColor: "#1B2B5E" },
   chipText: { color: "#1a1a1a", fontSize: 14 },
   chipTextActive: { color: "#ffffff", fontWeight: "bold" },
+  towingBadge: { alignSelf: "flex-start", backgroundColor: "#c0392b", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6, marginVertical: 4 },
+  towingBadgeText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
 });
 
