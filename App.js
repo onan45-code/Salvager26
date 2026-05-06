@@ -382,8 +382,8 @@ function DashboardScreen({ navigation }) {
         if (!userSnap.empty) setUserName(userSnap.docs[0].data().firstName || "");
         const listingsSnap = await getDocs(query(collection(db, "listings"), where("sellerId", "==", user.uid)));
         const listingsData = listingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setListingCount(listingsData.filter(l => l.status !== "deleted").length);
         const activeListings = listingsData.filter(l => l.status !== "sold" && l.status !== "deleted");
+        setListingCount(activeListings.length);
         const withCounts = await attachBidCounts(activeListings);
         withCounts.sort((a, b) => {
           if (b.bidCount !== a.bidCount) return b.bidCount - a.bidCount;
