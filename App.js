@@ -1378,6 +1378,7 @@ function ProfileScreen({ navigation }) {
   const [prefMakes, setPrefMakes] = useState([]);
   const [prefRunsOnly, setPrefRunsOnly] = useState(false);
   const [prefCleanTitleOnly, setPrefCleanTitleOnly] = useState(false);
+  const [smsNotifications, setSmsNotifications] = useState(false);
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -1400,6 +1401,7 @@ function ProfileScreen({ navigation }) {
           setPrefMakes(Array.isArray(bp.makes) ? bp.makes : []);
           setPrefRunsOnly(!!bp.runsOnly);
           setPrefCleanTitleOnly(!!bp.cleanTitleOnly);
+          setSmsNotifications(!!data.smsNotifications);
         }
       } catch(e) {}
       setLoading(false);
@@ -1442,6 +1444,25 @@ function ProfileScreen({ navigation }) {
 
   const toggleMake = (m) => {
     setPrefMakes(prefMakes.includes(m) ? prefMakes.filter(x => x !== m) : [...prefMakes, m]);
+  };
+
+  const toggleSms = async () => {
+    const next = !smsNotifications;
+    setSmsNotifications(next);
+    try {
+      if (userData && userData.id) {
+        await updateDoc(doc(db, "users", userData.id), { smsNotifications: next });
+      } else {
+        const newDoc = await addDoc(collection(db, "users"), {
+          uid: user.uid, email: user.email, firstName, lastName, phone, zipCode, companyName,
+          pushToken: "", smsNotifications: next, createdAt: serverTimestamp()
+        });
+        setUserData({ id: newDoc.id, uid: user.uid, smsNotifications: next });
+      }
+    } catch(e) {
+      setSmsNotifications(!next);
+      Alert.alert("Error", e.message);
+    }
   };
 
   if (loading) return (
@@ -1500,6 +1521,11 @@ function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
         <Text style={[styles.listingDetail, {marginBottom: 12}]}>Get notified when a new listing matches your criteria.</Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity style={[styles.toggleButton, smsNotifications && styles.toggleActive]} onPress={toggleSms}>
+            <Text style={[styles.toggleText, smsNotifications && styles.toggleTextActive]}>{smsNotifications ? "SMS notifications: ON" : "SMS notifications: OFF"}</Text>
+          </TouchableOpacity>
+        </View>
         {editingPrefs ? (
           <>
             <Text style={styles.sectionLabel}>ZIP Code</Text>
