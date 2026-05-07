@@ -271,11 +271,13 @@ function LoginScreen({ navigation, route }) {
     setLoading(true);
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
-      const token = await registerForPushNotifications();
-      if (token) {
-        const snap = await getDocs(query(collection(db, "users"), where("uid", "==", cred.user.uid)));
-        if (!snap.empty) await updateDoc(doc(db, "users", snap.docs[0].id), { pushToken: token });
-      }
+      try {
+        const token = await registerForPushNotifications();
+        if (token) {
+          const snap = await getDocs(query(collection(db, "users"), where("uid", "==", cred.user.uid)));
+          if (!snap.empty) await updateDoc(doc(db, "users", snap.docs[0].id), { pushToken: token });
+        }
+      } catch (e) {}
       navigation.navigate("Dashboard");
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
@@ -301,7 +303,8 @@ function LoginScreen({ navigation, route }) {
     setLoading(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      const token = await registerForPushNotifications();
+      let token = null;
+      try { token = await registerForPushNotifications(); } catch (e) {}
       await addDoc(collection(db, "users"), {
         uid: cred.user.uid, email, firstName, lastName, phone, zipCode,
         companyName: companyName || "", pushToken: token || "",
