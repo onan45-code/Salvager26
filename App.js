@@ -105,6 +105,7 @@ Notifications.setNotificationHandler({
 });
 
 async function registerForPushNotifications() {
+  if (Platform.OS === 'web') return null;
   const { status } = await Notifications.requestPermissionsAsync();
   if (status !== 'granted') return null;
   const token = await Notifications.getExpoPushTokenAsync({ projectId: "aa722540-034a-4737-9e73-1efc9e4dd59c" });
