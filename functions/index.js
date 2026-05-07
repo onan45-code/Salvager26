@@ -1,4 +1,4 @@
-// Deployed: 2026-05-07c — switch to API key auth (SK + secret)
+// Deployed: 2026-05-07d — force redeploy with API key code
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const { logger } = require("firebase-functions");
