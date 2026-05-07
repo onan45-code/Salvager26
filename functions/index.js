@@ -1,4 +1,4 @@
-// Deployed: 2026-05-07 — picks up TWILIO_ACCOUNT_SID v2
+// Deployed: 2026-05-07c — switch to API key auth (SK + secret)
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const { logger } = require("firebase-functions");
@@ -8,20 +8,25 @@ const twilio = require("twilio");
 admin.initializeApp();
 
 const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
-const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
+const TWILIO_API_KEY_SID = defineSecret("TWILIO_API_KEY_SID");
+const TWILIO_API_KEY_SECRET = defineSecret("TWILIO_API_KEY_SECRET");
 const TWILIO_FROM_NUMBER = defineSecret("TWILIO_FROM_NUMBER");
 
 exports.onListingCreate = onDocumentCreated(
   {
     document: "listings/{listingId}",
-    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER],
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_FROM_NUMBER],
   },
   async (event) => {
     const listing = event.data?.data();
     if (!listing) return;
     if (listing.status === "deleted") return;
 
-    const client = twilio(TWILIO_ACCOUNT_SID.value(), TWILIO_AUTH_TOKEN.value());
+    const client = twilio(
+      TWILIO_API_KEY_SID.value(),
+      TWILIO_API_KEY_SECRET.value(),
+      { accountSid: TWILIO_ACCOUNT_SID.value() }
+    );
     const fromNumber = TWILIO_FROM_NUMBER.value();
 
     const usersSnap = await admin.firestore().collection("users").get();
