@@ -25,6 +25,7 @@
     "expo-updates": "~0.28.18",
     "firebase": "^12.12.1",
     "geolib": "^3.3.4",
+    "getenv": "^2.0.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.6",
