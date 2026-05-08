@@ -858,8 +858,9 @@ function BrowseCarsScreen({ navigation }) {
         const bidMap = {};
         myBidsSnap.docs.forEach(d => { const b = d.data(); bidMap[b.listingId] = b.amount; });
         setMyBidsByListing(bidMap);
-        setListings(filtered);
-        setFilteredListings(filtered);
+        const withCounts = await attachBidCounts(filtered);
+        setListings(withCounts);
+        setFilteredListings(withCounts);
       } catch (error) { Alert.alert("Error", error.message); }
       setLoading(false);
     };
@@ -927,9 +928,9 @@ function BrowseCarsScreen({ navigation }) {
           <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
           <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
           {listing.distanceMiles !== undefined && <Text style={styles.listingDetail}>{listing.distanceMiles} miles away</Text>}
-          <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
-          {listing.runs === false && <Text style={styles.conditionBadge}>Not Running</Text>}
-          {listing.needsTow === true && <Text style={styles.conditionBadge}>Needs Tow</Text>}
+          <Text style={styles.listingDetail}>Runs: {listing.runs ? "Yes" : "No"}</Text>
+          <Text style={styles.listingDetail}>Has Title: {listing.hasTitle ? "Yes" : "No"}</Text>
+          <Text style={[styles.listingDetail, {fontWeight: "bold", color: "#1B2B5E"}]}>{(listing.bidCount || 0) === 1 ? "1 bid" : (listing.bidCount || 0) + " bids"}</Text>
           {myBidsByListing[listing.id] !== undefined ? <Text style={{color: "#27AE60", fontSize: 14, marginTop: 8, fontWeight: "bold"}}>You bid ${myBidsByListing[listing.id]} ✓</Text> : <Text style={styles.bidButton2}>Place Bid →</Text>}
         </TouchableOpacity>
       ))}
