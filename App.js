@@ -460,18 +460,13 @@ function DashboardScreen({ navigation }) {
         <View>
           <Text style={{color: "#ffffff", fontSize: 18, fontWeight: "bold", textAlign: "center", marginTop: 0, marginBottom: 8, backgroundColor: "#1B2B5E", padding: 18, borderRadius: 14}}>My Active Listings</Text>
           {myListings.map(listing => (
-            <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => navigation.navigate("SellerBids", { listing })}>
-              {listing.photos && listing.photos.length > 0 && (
-                <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
-              )}
-              <View style={styles.listingCardHeader}>
-                <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
-              </View>
-              <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
-              <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
-              <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
-              <Text style={styles.viewBidsText}>{listing.bidCount > 0 ? "View " + listing.bidCount + (listing.bidCount === 1 ? " Bid →" : " Bids →") : "No bids yet"}</Text>
-            </TouchableOpacity>
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              onPress={() => navigation.navigate("SellerBids", { listing })}
+            >
+              <Text style={styles.viewBidsText}>{listing.bidCount > 0 ? "View Bids →" : "No bids yet"}</Text>
+            </ListingCard>
           ))}
         </View>
       )}
@@ -530,19 +525,15 @@ function MyListingsScreen({ navigation }) {
           <Text style={styles.emptyStateSubtext}>Tap "List a Car" above to post your first vehicle and start receiving bids.</Text>
         </View>
       ) : listings.map(listing => (
-        <TouchableOpacity key={listing.id} style={[styles.listingCard, listing.status === "sold" && styles.soldCard]} onPress={() => navigation.navigate("SellerBids", { listing })}>
-          {listing.photos && listing.photos.length > 0 && (
-            <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
-          )}
-          <View style={styles.listingCardHeader}>
-            <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
-            {listing.status === "sold" && <Text style={styles.soldBadge}>SOLD</Text>}
-          </View>
-          <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
-          <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
-          <Text style={styles.listingDetail}>{formatListedDate(listing.createdAt)}</Text>
-          <Text style={styles.viewBidsText}>{listing.status === "sold" ? "View Deal →" : listing.bidCount > 0 ? "View " + listing.bidCount + (listing.bidCount === 1 ? " Bid →" : " Bids →") : "No bids yet"}</Text>
-        </TouchableOpacity>
+        <ListingCard
+          key={listing.id}
+          listing={listing}
+          style={listing.status === "sold" && styles.soldCard}
+          onPress={() => navigation.navigate("SellerBids", { listing })}
+        >
+          {listing.status === "sold" && <Text style={styles.soldBadge}>SOLD</Text>}
+          <Text style={styles.viewBidsText}>{listing.status === "sold" ? "View Deal →" : listing.bidCount > 0 ? "View Bids →" : "No bids yet"}</Text>
+        </ListingCard>
       ))}
     </ScrollView>
     </KeyboardAvoidingView>
@@ -918,21 +909,14 @@ function BrowseCarsScreen({ navigation }) {
           <Text style={styles.emptyStateSubtext}>Try expanding your search radius or year range, or check back later for new listings.</Text>
         </View>
       ) : filteredListings.map(listing => (
-        <TouchableOpacity key={listing.id} style={styles.listingCard} onPress={() => myBidsByListing[listing.id] !== undefined ? navigation.navigate("MyBid", { listing }) : navigation.navigate("PlaceBid", { listing })}>
-          {listing.photos && listing.photos.length > 0 && (
-            <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
-          )}
-          <View style={styles.listingCardHeader}>
-            <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
-          </View>
-          <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
-          <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
+        <ListingCard
+          key={listing.id}
+          listing={listing}
+          onPress={() => myBidsByListing[listing.id] !== undefined ? navigation.navigate("MyBid", { listing }) : navigation.navigate("PlaceBid", { listing })}
+        >
           {listing.distanceMiles !== undefined && <Text style={styles.listingDetail}>{listing.distanceMiles} miles away</Text>}
-          <Text style={styles.listingDetail}>Runs: {listing.runs ? "Yes" : "No"}</Text>
-          <Text style={styles.listingDetail}>Has Title: {listing.hasTitle ? "Yes" : "No"}</Text>
-          <Text style={[styles.listingDetail, {fontWeight: "bold", color: "#1B2B5E"}]}>{(listing.bidCount || 0) === 1 ? "1 bid" : (listing.bidCount || 0) + " bids"}</Text>
           {myBidsByListing[listing.id] !== undefined ? <Text style={{color: "#27AE60", fontSize: 14, marginTop: 8, fontWeight: "bold"}}>You bid ${myBidsByListing[listing.id]} ✓</Text> : <Text style={styles.bidButton2}>Place Bid →</Text>}
-        </TouchableOpacity>
+        </ListingCard>
       ))}
     </ScrollView>
     </KeyboardAvoidingView>
@@ -1856,6 +1840,12 @@ function MyBidsScreen({ navigation }) {
           return { ...bid, listingInfo: listing };
         } catch(e) { return bid; }
       }));
+      const listings = bidsWithListings.map(b => b.listingInfo).filter(Boolean);
+      const listingsWithCounts = await attachBidCounts(listings);
+      const countById = Object.fromEntries(listingsWithCounts.map(l => [l.id, l.bidCount || 0]));
+      for (const b of bidsWithListings) {
+        if (b.listingInfo) b.listingInfo.bidCount = countById[b.listingInfo.id] || 0;
+      }
       bidsWithListings.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       setBids(bidsWithListings);
     } catch(e) { Alert.alert("Error", e.message); }
@@ -1882,12 +1872,13 @@ function MyBidsScreen({ navigation }) {
           <Text style={styles.emptyStateText}>You haven't placed any bids</Text>
           <Text style={styles.emptyStateSubtext}>Find a car you like and make an offer. Sellers will be notified instantly.</Text>
         </View>
-      ) : bids.map(bid => (
-        <TouchableOpacity key={bid.id} style={[styles.listingCard, bid.status === "accepted" && styles.acceptedCard]} onPress={() => bid.listingInfo && navigation.navigate("MyBid", { listing: bid.listingInfo })}>
-          {bid.listingInfo && bid.listingInfo.photos && bid.listingInfo.photos.length > 0 && (
-            <Image source={{ uri: bid.listingInfo.photos[0] }} style={styles.listingPhoto} />
-          )}
-          <Text style={styles.listingTitle}>{bid.listingInfo ? bid.listingInfo.year + " " + bid.listingInfo.make + " " + bid.listingInfo.model : "Vehicle"}</Text>
+      ) : bids.map(bid => bid.listingInfo ? (
+        <ListingCard
+          key={bid.id}
+          listing={bid.listingInfo}
+          style={bid.status === "accepted" && styles.acceptedCard}
+          onPress={() => navigation.navigate("MyBid", { listing: bid.listingInfo })}
+        >
           {bid.counterStatus === "pending" && bid.status !== "accepted" && (
             <View style={styles.counterBadge}>
               <Text style={styles.counterBadgeText}>Counteroffer received: ${bid.counterAmount}</Text>
@@ -1898,7 +1889,13 @@ function MyBidsScreen({ navigation }) {
           {bid.towingIncluded && <Text style={styles.listingDetail}>Towing included</Text>}
           {bid.pickupTime ? <Text style={styles.listingDetail}>Pickup: {bid.pickupTime === "morning" ? "Morning" : "Afternoon"}</Text> : null}
           <Text style={styles.listingDetail}>{formatBidDate(bid.createdAt)}</Text>
-        </TouchableOpacity>
+        </ListingCard>
+      ) : (
+        <View key={bid.id} style={styles.listingCard}>
+          <Text style={styles.listingTitle}>Vehicle</Text>
+          <Text style={styles.bidAmount}>${bid.amount}</Text>
+          <Text style={styles.listingDetail}>Listing no longer available</Text>
+        </View>
       ))}
     </ScrollView>
     </KeyboardAvoidingView>
@@ -1915,7 +1912,8 @@ function MySoldListingsScreen({ navigation }) {
       const snap = await getDocs(query(collection(db, "listings"), where("sellerId", "==", user.uid), where("status", "==", "sold")));
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-      setListings(data);
+      const withCounts = await attachBidCounts(data);
+      setListings(withCounts);
     } catch(e) { Alert.alert("Error", e.message); }
     setLoading(false);
   };
@@ -1943,19 +1941,14 @@ function MySoldListingsScreen({ navigation }) {
       ) : listings.map(l => {
         const fee = Math.round((l.soldPrice || 0) * PLATFORM_FEE_PERCENT / 100);
         return (
-          <View key={l.id} style={[styles.listingCard, styles.acceptedCard]}>
-            {l.photos && l.photos.length > 0 && (
-              <Image source={{ uri: l.photos[0] }} style={styles.listingPhoto} />
-            )}
-            <Text style={styles.listingTitle}>{l.year} {l.make} {l.model}{l.trim ? " " + l.trim : ""}</Text>
-            <Text style={styles.listingDetail}>{l.city}, {l.zip}</Text>
+          <ListingCard key={l.id} listing={l} style={styles.acceptedCard}>
             <Text style={styles.bidAmount}>SOLD - ${l.soldPrice}</Text>
             {l.soldToName ? <Text style={styles.listingDetail}>Buyer: {l.soldToName}</Text> : null}
             <Text style={styles.listingDetail}>Email: {l.soldToEmail || "—"}</Text>
             {l.soldToPhone ? <Text style={styles.listingDetail}>Phone: {l.soldToPhone}</Text> : null}
             <Text style={styles.listingDetail}>Platform fee ({PLATFORM_FEE_PERCENT}%): -${fee}</Text>
             <Text style={[styles.listingDetail, {fontWeight: "bold", color: "#1a1a1a"}]}>Net: ${(l.soldPrice || 0) - fee}</Text>
-          </View>
+          </ListingCard>
         );
       })}
     </ScrollView>
@@ -1979,6 +1972,12 @@ function MyPurchasesScreen({ navigation }) {
           return { ...bid, listingInfo: listing };
         } catch(e) { return bid; }
       }));
+      const listings = enriched.map(b => b.listingInfo).filter(Boolean);
+      const listingsWithCounts = await attachBidCounts(listings);
+      const countById = Object.fromEntries(listingsWithCounts.map(l => [l.id, l.bidCount || 0]));
+      for (const b of enriched) {
+        if (b.listingInfo) b.listingInfo.bidCount = countById[b.listingInfo.id] || 0;
+      }
       enriched.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       setItems(enriched);
     } catch(e) { Alert.alert("Error", e.message); }
@@ -2005,24 +2004,22 @@ function MyPurchasesScreen({ navigation }) {
           <Text style={styles.emptyStateText}>No purchases yet</Text>
           <Text style={styles.emptyStateSubtext}>When a seller accepts one of your bids, the deal will show up here.</Text>
         </View>
-      ) : items.map(item => {
-        const l = item.listingInfo;
-        return (
-          <View key={item.id} style={[styles.listingCard, styles.acceptedCard]}>
-            {l && l.photos && l.photos.length > 0 && (
-              <Image source={{ uri: l.photos[0] }} style={styles.listingPhoto} />
-            )}
-            <Text style={styles.listingTitle}>{l ? l.year + " " + l.make + " " + l.model + (l.trim ? " " + l.trim : "") : "Vehicle"}</Text>
-            {l ? <Text style={styles.listingDetail}>{l.city}, {l.zip}</Text> : null}
-            <Text style={styles.bidAmount}>${item.amount}</Text>
-            <Text style={styles.listingDetail}>Seller: {l?.sellerEmail || "—"}</Text>
-            {item.sellerPhone ? <Text style={styles.listingDetail}>Phone: {item.sellerPhone}</Text> : null}
-            {item.towingIncluded !== undefined && (item.towingIncluded
-              ? <View style={styles.towingBadgeIn}><Text style={styles.towingBadgeText}>Towing included</Text></View>
-              : <View style={styles.towingBadgeOut}><Text style={styles.towingBadgeText}>Towing not included</Text></View>)}
-          </View>
-        );
-      })}
+      ) : items.map(item => item.listingInfo ? (
+        <ListingCard key={item.id} listing={item.listingInfo} style={styles.acceptedCard}>
+          <Text style={styles.bidAmount}>${item.amount}</Text>
+          <Text style={styles.listingDetail}>Seller: {item.listingInfo.sellerEmail || "—"}</Text>
+          {item.sellerPhone ? <Text style={styles.listingDetail}>Phone: {item.sellerPhone}</Text> : null}
+          {item.towingIncluded !== undefined && (item.towingIncluded
+            ? <View style={styles.towingBadgeIn}><Text style={styles.towingBadgeText}>Towing included</Text></View>
+            : <View style={styles.towingBadgeOut}><Text style={styles.towingBadgeText}>Towing not included</Text></View>)}
+        </ListingCard>
+      ) : (
+        <View key={item.id} style={[styles.listingCard, styles.acceptedCard]}>
+          <Text style={styles.listingTitle}>Vehicle</Text>
+          <Text style={styles.bidAmount}>${item.amount}</Text>
+          <Text style={styles.listingDetail}>Listing no longer available</Text>
+        </View>
+      ))}
     </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -2073,6 +2070,24 @@ function EditListingScreen({ route, navigation }) {
       </View>
     </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+function ListingCard({ listing, onPress, style, children }) {
+  const bidCount = listing.bidCount || 0;
+  return (
+    <TouchableOpacity style={[styles.listingCard, style]} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
+      {listing.photos && listing.photos.length > 0 && (
+        <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
+      )}
+      <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
+      {listing.mileage ? <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text> : null}
+      {(listing.city || listing.zip) ? <Text style={styles.listingDetail}>{listing.city}{listing.city && listing.zip ? ", " : ""}{listing.zip}</Text> : null}
+      <Text style={styles.listingDetail}>Runs: {listing.runs ? "Yes" : "No"}</Text>
+      <Text style={styles.listingDetail}>Has Title: {listing.hasTitle ? "Yes" : "No"}</Text>
+      <Text style={[styles.listingDetail, {fontWeight: "bold", color: "#1B2B5E"}]}>{bidCount === 1 ? "1 bid" : bidCount + " bids"}</Text>
+      {children}
+    </TouchableOpacity>
   );
 }
 
