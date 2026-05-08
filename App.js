@@ -1029,12 +1029,20 @@ function PlaceBidScreen({ route, navigation }) {
           </ScrollView>
         )}
         <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
+        {listing.vin ? <Text style={styles.listingDetail}>VIN: {listing.vin}</Text> : null}
         <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
         <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
-        {listing.notes ? <Text style={styles.listingDetail}>{listing.notes}</Text> : null}
-        {listing.runs === false && <Text style={styles.conditionBadge}>Not Running</Text>}
-        {listing.hasTitle === false && <Text style={styles.conditionBadge}>No Title</Text>}
-        {listing.needsTow === true && <Text style={styles.conditionBadge}>Needs Tow</Text>}
+        <Text style={styles.listingDetail}>Runs: {listing.runs ? "Yes" : "No"}</Text>
+        <Text style={styles.listingDetail}>Keys: {listing.hasKeys ? "Yes" : "No"}</Text>
+        <Text style={styles.listingDetail}>Drivable: {listing.hasTitle ? "Yes" : "No"}</Text>
+        <Text style={styles.listingDetail}>Delivery: {listing.needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
+        {listing.titleStatus ? <Text style={styles.listingDetail}>Title: {listing.titleStatus}</Text> : null}
+        {listing.engineStatus ? <Text style={styles.listingDetail}>Engine: {listing.engineStatus}</Text> : null}
+        {listing.transStatus ? <Text style={styles.listingDetail}>Transmission: {listing.transStatus}</Text> : null}
+        {listing.airbags ? <Text style={styles.listingDetail}>Airbags: {listing.airbags}</Text> : null}
+        {listing.tires ? <Text style={styles.listingDetail}>Tires: {listing.tires}</Text> : null}
+        {listing.damage ? <Text style={styles.listingDetail}>Damage: {listing.damage}</Text> : null}
+        {listing.notes ? <Text style={styles.listingDetail}>Notes: {listing.notes}</Text> : null}
       </View>
       <View style={styles.formContainer}>
         <Text style={styles.sectionLabel}>Your Offer</Text>
@@ -1752,6 +1760,7 @@ function MyBidScreen({ route, navigation }) {
           </ScrollView>
         )}
         <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model} {listing.trim}</Text>
+        {listing.vin ? <Text style={styles.listingDetail}>VIN: {listing.vin}</Text> : null}
         <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
         <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
         <Text style={styles.listingDetail}>Runs: {listing.runs ? "Yes" : "No"}</Text>
