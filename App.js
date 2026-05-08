@@ -1939,8 +1939,9 @@ function MySoldListingsScreen({ navigation }) {
             )}
             <Text style={styles.listingTitle}>{l.year} {l.make} {l.model}{l.trim ? " " + l.trim : ""}</Text>
             <Text style={styles.listingDetail}>{l.city}, {l.zip}</Text>
-            <Text style={styles.bidAmount}>${l.soldPrice}</Text>
-            <Text style={styles.listingDetail}>Buyer: {l.soldToEmail || "—"}</Text>
+            <Text style={styles.bidAmount}>SOLD - ${l.soldPrice}</Text>
+            {l.soldToName ? <Text style={styles.listingDetail}>Buyer: {l.soldToName}</Text> : null}
+            <Text style={styles.listingDetail}>Email: {l.soldToEmail || "—"}</Text>
             {l.soldToPhone ? <Text style={styles.listingDetail}>Phone: {l.soldToPhone}</Text> : null}
             <Text style={styles.listingDetail}>Platform fee ({PLATFORM_FEE_PERCENT}%): -${fee}</Text>
             <Text style={[styles.listingDetail, {fontWeight: "bold", color: "#1a1a1a"}]}>Net: ${(l.soldPrice || 0) - fee}</Text>
