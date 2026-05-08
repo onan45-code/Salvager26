@@ -1862,6 +1862,11 @@ function MyBidsScreen({ navigation }) {
             <Image source={{ uri: bid.listingInfo.photos[0] }} style={styles.listingPhoto} />
           )}
           <Text style={styles.listingTitle}>{bid.listingInfo ? bid.listingInfo.year + " " + bid.listingInfo.make + " " + bid.listingInfo.model : "Vehicle"}</Text>
+          {bid.counterStatus === "pending" && bid.status !== "accepted" && (
+            <View style={styles.counterBadge}>
+              <Text style={styles.counterBadgeText}>Counteroffer received: ${bid.counterAmount}</Text>
+            </View>
+          )}
           <Text style={styles.bidAmount}>${bid.amount}</Text>
           {bid.status === "accepted" ? <Text style={styles.acceptedBadge}>ACCEPTED</Text> : <Text style={styles.listingDetail}>Status: Pending</Text>}
           {bid.towingIncluded && <Text style={styles.listingDetail}>Towing included</Text>}
@@ -2134,6 +2139,8 @@ const styles = StyleSheet.create({
   towingBadgeOut: { alignSelf: "flex-start", backgroundColor: "#c0392b", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6, marginVertical: 4 },
   towingBadgeIn: { alignSelf: "flex-start", backgroundColor: "#27AE60", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6, marginVertical: 4 },
   towingBadgeText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
+  counterBadge: { alignSelf: "flex-start", backgroundColor: "#1B2B5E", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6, marginVertical: 4 },
+  counterBadgeText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
   towingToggleIn: { backgroundColor: "#27AE60", padding: 18, borderRadius: 14, alignItems: "center" },
   towingToggleOut: { backgroundColor: "#c0392b", padding: 18, borderRadius: 14, alignItems: "center" },
   towingToggleText: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
