@@ -627,7 +627,9 @@ function SellerBidsScreen({ route, navigation }) {
         setAccepting(true);
         try {
           let buyerPhone = "";
+          let buyerName = "";
           let sellerPhone = "";
+          let sellerName = "";
           let buyerToken = "";
           try {
             const buyerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", bid.buyerId)));
@@ -635,14 +637,19 @@ function SellerBidsScreen({ route, navigation }) {
               const b = buyerSnap.docs[0].data();
               buyerPhone = b.phone || "";
               buyerToken = b.pushToken || "";
+              buyerName = ((b.firstName || "") + " " + (b.lastName || "")).trim();
             }
             const sellerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", auth.currentUser.uid)));
-            if (!sellerSnap.empty) sellerPhone = sellerSnap.docs[0].data().phone || "";
+            if (!sellerSnap.empty) {
+              const s = sellerSnap.docs[0].data();
+              sellerPhone = s.phone || "";
+              sellerName = ((s.firstName || "") + " " + (s.lastName || "")).trim();
+            }
           } catch(e) {}
-          await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail, soldToPhone: buyerPhone, sellerPhone: sellerPhone });
-          await updateDoc(doc(db, "bids", bid.id), { status: "accepted", buyerPhone: buyerPhone, sellerPhone: sellerPhone });
-          setBids(bids.map(b => b.id === bid.id ? { ...b, status: "accepted", buyerPhone, sellerPhone } : b));
-          setListing({ ...listing, status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail, soldToPhone: buyerPhone, sellerPhone });
+          await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail, soldToPhone: buyerPhone, soldToName: buyerName, sellerPhone, sellerName });
+          await updateDoc(doc(db, "bids", bid.id), { status: "accepted", buyerPhone, buyerName, sellerPhone, sellerName });
+          setBids(bids.map(b => b.id === bid.id ? { ...b, status: "accepted", buyerPhone, buyerName, sellerPhone, sellerName } : b));
+          setListing({ ...listing, status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail, soldToPhone: buyerPhone, soldToName: buyerName, sellerPhone, sellerName });
           try {
             if (buyerToken) {
               await fetch("https://exp.host/--/api/v2/push/send", {
@@ -715,7 +722,8 @@ function SellerBidsScreen({ route, navigation }) {
           {bid.pickupTime ? <Text style={styles.listingDetail}>Pickup: {bid.pickupTime === "morning" ? "Morning" : "Afternoon"}</Text> : null}
           {bid.status === "accepted" ? (
             <>
-              <Text style={styles.listingDetail}>Buyer: {bid.buyerEmail}</Text>
+              {bid.buyerName ? <Text style={styles.listingDetail}>Buyer: {bid.buyerName}</Text> : null}
+              <Text style={styles.listingDetail}>Email: {bid.buyerEmail}</Text>
               {bid.buyerPhone ? <Text style={styles.listingDetail}>Phone: {bid.buyerPhone}</Text> : null}
             </>
           ) : <Text style={styles.listingDetail}>Buyer: Contact hidden until offer accepted</Text>}
@@ -1634,7 +1642,9 @@ function MyBidScreen({ route, navigation }) {
     try {
       const counterAmt = myBid.counterAmount;
       let sellerPhone = "";
+      let sellerName = "";
       let buyerPhone = "";
+      let buyerName = "";
       let sellerToken = "";
       try {
         const sellerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", listing.sellerId)));
@@ -1642,12 +1652,17 @@ function MyBidScreen({ route, navigation }) {
           const s = sellerSnap.docs[0].data();
           sellerPhone = s.phone || "";
           sellerToken = s.pushToken || "";
+          sellerName = ((s.firstName || "") + " " + (s.lastName || "")).trim();
         }
         const buyerSnap = await getDocs(query(collection(db, "users"), where("uid", "==", user.uid)));
-        if (!buyerSnap.empty) buyerPhone = buyerSnap.docs[0].data().phone || "";
+        if (!buyerSnap.empty) {
+          const b = buyerSnap.docs[0].data();
+          buyerPhone = b.phone || "";
+          buyerName = ((b.firstName || "") + " " + (b.lastName || "")).trim();
+        }
       } catch(e) {}
-      await updateDoc(doc(db, "bids", myBid.id), { amount: counterAmt, status: "accepted", counterStatus: "accepted", buyerPhone, sellerPhone });
-      await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: counterAmt, soldToEmail: user.email, soldToPhone: buyerPhone, sellerPhone });
+      await updateDoc(doc(db, "bids", myBid.id), { amount: counterAmt, status: "accepted", counterStatus: "accepted", buyerPhone, buyerName, sellerPhone, sellerName });
+      await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: counterAmt, soldToEmail: user.email, soldToPhone: buyerPhone, soldToName: buyerName, sellerPhone, sellerName });
       try {
         if (sellerToken) {
           await fetch("https://exp.host/--/api/v2/push/send", {
@@ -1661,7 +1676,7 @@ function MyBidScreen({ route, navigation }) {
           });
         }
       } catch(e) {}
-      setMyBid({ ...myBid, amount: counterAmt, status: "accepted", counterStatus: "accepted", buyerPhone, sellerPhone });
+      setMyBid({ ...myBid, amount: counterAmt, status: "accepted", counterStatus: "accepted", buyerPhone, buyerName, sellerPhone, sellerName });
       Alert.alert("Deal Done!", "You've accepted the counter at $" + counterAmt);
     } catch(e) { Alert.alert("Error", e.message); }
     setCounterRespSubmit(false);
@@ -1753,7 +1768,7 @@ function MyBidScreen({ route, navigation }) {
       </View>
       {myBid && (
         <View style={styles.listingCard}>
-          <Text style={styles.sectionLabel}>Your Current Bid</Text>
+          <Text style={styles.sectionLabel}>{myBid.status === "accepted" ? "Sold for" : "Your Current Bid"}</Text>
           <Text style={styles.bidAmount}>${myBid.amount}</Text>
           <Text style={styles.listingDetail}>Status: {myBid.status === "accepted" ? "Accepted" : "Pending"}</Text>
           {myBid.towingIncluded && <Text style={styles.listingDetail}>Towing included in bid</Text>}
@@ -1765,6 +1780,7 @@ function MyBidScreen({ route, navigation }) {
       {myBid && myBid.status === "accepted" && (
         <View style={styles.listingCard}>
           <Text style={styles.sectionLabel}>Seller Contact</Text>
+          {myBid.sellerName ? <Text style={styles.listingDetail}>Name: {myBid.sellerName}</Text> : null}
           <Text style={styles.listingDetail}>Email: {listing.sellerEmail}</Text>
           {myBid.sellerPhone ? <Text style={styles.listingDetail}>Phone: {myBid.sellerPhone}</Text> : null}
         </View>
