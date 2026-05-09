@@ -850,6 +850,21 @@ function BrowseCarsScreen({ navigation }) {
         myBidsSnap.docs.forEach(d => { const b = d.data(); bidMap[b.listingId] = b.amount; });
         setMyBidsByListing(bidMap);
         const withCounts = await attachBidCounts(filtered);
+        try {
+          const userSnap = await getDocs(query(collection(db, "users"), where("uid", "==", auth.currentUser.uid)));
+          const profileZip = userSnap.empty ? "" : (userSnap.docs[0].data().zipCode || "");
+          if (profileZip) {
+            const cache = {};
+            const userCoords = await getZipCoordsCached(profileZip, cache);
+            if (userCoords) {
+              for (const listing of withCounts) {
+                if (!listing.zip) continue;
+                const c = await getZipCoordsCached(listing.zip, cache);
+                if (c) listing.distanceMiles = Math.round(getDistance(userCoords, c) / 1609.34);
+              }
+            }
+          }
+        } catch(e) {}
         setListings(withCounts);
         setFilteredListings(withCounts);
       } catch (error) { Alert.alert("Error", error.message); }
