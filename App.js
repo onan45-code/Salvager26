@@ -385,25 +385,23 @@ function MainTabs() {
           let name = "ellipse-outline";
           if (route.name === "Home") name = focused ? "home" : "home-outline";
           else if (route.name === "Browse") name = focused ? "search" : "search-outline";
-          else if (route.name === "Sell") name = "add-circle";
+          else if (route.name === "Listings") name = focused ? "list" : "list-outline";
           else if (route.name === "Bids") name = focused ? "pricetag" : "pricetag-outline";
           else if (route.name === "Profile") name = focused ? "person" : "person-outline";
-          const size = route.name === "Sell" ? 38 : 24;
-          const tint = route.name === "Sell" ? "#c0392b" : color;
-          return <Ionicons name={name} size={size} color={tint} />;
+          return <Ionicons name={name} size={24} color={color} />;
         },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Browse" component={BrowseCarsScreen} />
       <Tab.Screen
-        name="Sell"
+        name="Listings"
         component={SellTabPlaceholder}
-        options={{ tabBarLabel: "Sell" }}
+        options={{ tabBarLabel: "Listings" }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
             e.preventDefault();
-            navigation.navigate("CreateListing");
+            navigation.navigate("MyListings");
           },
         })}
       />
