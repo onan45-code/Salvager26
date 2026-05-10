@@ -33,6 +33,9 @@ yarn-error.*
 # local env files
 .env*.local
 
+# Claude Code local state
+.claude/
+
 # Firebase Functions
 functions/node_modules/
 functions/.runtimeconfig.json
