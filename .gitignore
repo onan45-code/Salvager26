@@ -33,8 +33,10 @@ yarn-error.*
 # local env files
 .env*.local
 
-# Claude Code local state
-.claude/
+# Claude Code local state (per-machine, not shared)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/projects/
 
 # Firebase Functions
 functions/node_modules/
