@@ -151,6 +151,7 @@ async function notifyMatchingUsers(listing) {
     for (const userDoc of usersSnap.docs) {
       const u = userDoc.data();
       if (u.uid === listing.sellerId) continue;
+      if (u.role === "seller") continue;
       if (!u.pushToken) continue;
       const prefs = u.buyingPreferences;
       if (!prefs || !prefs.zip) continue;
