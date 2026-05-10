@@ -436,6 +436,9 @@ function HomeScreen({ navigation }) {
   const [userName, setUserName] = useState("");
   const [featured, setFeatured] = useState([]);
   const [activity, setActivity] = useState([]);
+  const [activeCount, setActiveCount] = useState(0);
+  const [soldCount, setSoldCount] = useState(0);
+  const [bidsPlacedCount, setBidsPlacedCount] = useState(0);
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -445,9 +448,16 @@ function HomeScreen({ navigation }) {
         if (!userSnap.empty) setUserName(userSnap.docs[0].data().firstName || "");
 
         const listingsSnap = await getDocs(collection(db, "listings"));
-        const listings = listingsSnap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .filter(l => l.status === "active" || (l.status !== "sold" && l.status !== "deleted"));
+        const allListings = listingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const listingByIdAll = Object.fromEntries(allListings.map(l => [l.id, l]));
+        const listings = allListings.filter(l => l.status !== "sold" && l.status !== "deleted");
+
+        const myListings = allListings.filter(l => l.sellerId === user.uid);
+        setActiveCount(myListings.filter(l => l.status !== "sold" && l.status !== "deleted").length);
+        setSoldCount(myListings.filter(l => l.status === "sold").length);
+
+        const myBidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
+        setBidsPlacedCount(myBidsSnap.size);
 
         const ids = listings.map(l => l.id);
         const bidStats = {};
@@ -471,16 +481,21 @@ function HomeScreen({ navigation }) {
         });
 
         const featuredSorted = [...listings]
-          .sort((a, b) => (b.bidCount - a.bidCount) || ((b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)))
+          .sort((a, b) => {
+            const aHasPhoto = a.photos && a.photos.length > 0 ? 0 : 1;
+            const bHasPhoto = b.photos && b.photos.length > 0 ? 0 : 1;
+            if (aHasPhoto !== bHasPhoto) return aHasPhoto - bHasPhoto;
+            if (b.bidCount !== a.bidCount) return b.bidCount - a.bidCount;
+            return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+          })
           .slice(0, 8);
         setFeatured(featuredSorted);
 
         const events = [];
         const recentBidsSnap = await getDocs(query(collection(db, "bids"), orderBy("createdAt", "desc"), limit(15)));
-        const listingById = Object.fromEntries(listings.map(l => [l.id, l]));
         for (const d of recentBidsSnap.docs) {
           const b = d.data();
-          const l = listingById[b.listingId];
+          const l = listingByIdAll[b.listingId];
           events.push({
             id: "bid-" + d.id,
             type: "bid",
@@ -489,16 +504,16 @@ function HomeScreen({ navigation }) {
             label: l ? l.year + " " + l.make + " " + l.model : "a vehicle",
           });
         }
-        const soldSnap = await getDocs(query(collection(db, "listings"), where("status", "==", "sold")));
-        for (const d of soldSnap.docs) {
-          const l = d.data();
-          events.push({
-            id: "sold-" + d.id,
-            type: "sold",
-            ts: l.createdAt,
-            amount: l.soldPrice,
-            label: l.year + " " + l.make + " " + l.model,
-          });
+        for (const l of allListings) {
+          if (l.status === "sold") {
+            events.push({
+              id: "sold-" + l.id,
+              type: "sold",
+              ts: l.createdAt,
+              amount: l.soldPrice,
+              label: l.year + " " + l.make + " " + l.model,
+            });
+          }
         }
         events.sort((a, b) => (b.ts?.seconds || 0) - (a.ts?.seconds || 0));
         setActivity(events.slice(0, 12));
@@ -514,6 +529,21 @@ function HomeScreen({ navigation }) {
       <View style={styles.homeHeader}>
         <Text style={styles.heroBrand}>Salvager</Text>
         <Text style={styles.heroGreeting}>Welcome back{userName ? ", " + userName : ""}</Text>
+      </View>
+
+      <View style={[styles.statsRow, {paddingHorizontal: 16}]}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{activeCount}</Text>
+          <Text style={styles.statLabel}>Active Listings</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{soldCount}</Text>
+          <Text style={styles.statLabel}>Sold</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{bidsPlacedCount}</Text>
+          <Text style={styles.statLabel}>Bids Placed</Text>
+        </View>
       </View>
 
       <TouchableOpacity style={styles.heroCta} onPress={() => navigation.navigate("CreateListing")}>
@@ -2397,7 +2427,7 @@ const styles = StyleSheet.create({
   sectionLink: { fontSize: 13, color: "#1B2B5E", fontWeight: "600" },
   softText: { color: "#888", fontSize: 14, paddingHorizontal: 20, marginTop: 4 },
   featuredCard: { width: 220, backgroundColor: "#ffffff", borderRadius: 14, marginRight: 12, borderWidth: 1, borderColor: "#eee", overflow: "hidden", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
-  featuredPhoto: { width: "100%", height: 130 },
+  featuredPhoto: { width: "100%", height: 130, resizeMode: "cover", backgroundColor: "#eee" },
   featuredBidPill: { position: "absolute", top: 10, right: 10, backgroundColor: "rgba(27,43,94,0.92)", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12 },
   featuredBidPillText: { color: "#ffffff", fontSize: 11, fontWeight: "bold" },
   featuredTitle: { fontSize: 14, fontWeight: "bold", color: "#1a1a1a" },
