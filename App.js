@@ -537,7 +537,7 @@ function HomeScreen({ navigation }) {
             </View>
             <Text style={styles.statNumber}>{activeCount}</Text>
           </View>
-          <Text style={styles.statLabel}>Active Listings</Text>
+          <Text style={styles.statLabel}>Listings</Text>
           <Text style={styles.statLink}>View all →</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("MySoldListings")} activeOpacity={0.7}>
@@ -557,7 +557,7 @@ function HomeScreen({ navigation }) {
             </View>
             <Text style={styles.statNumber}>{bidsPlacedCount}</Text>
           </View>
-          <Text style={styles.statLabel}>Bids Placed</Text>
+          <Text style={styles.statLabel}>Bids</Text>
           <Text style={styles.statLink}>View all →</Text>
         </TouchableOpacity>
       </View>
