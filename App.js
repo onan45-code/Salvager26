@@ -2,10 +2,12 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, TextInput, Alert, ScrollView, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import { auth, db, storage } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, setDoc, orderBy, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -14,6 +16,7 @@ import * as Location from 'expo-location';
 import { getDistance } from 'geolib';
 
 const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
 
 const PLATFORM_FEE_PERCENT = 5;
 
@@ -187,7 +190,7 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        setInitialRoute("Dashboard");
+        setInitialRoute("MainTabs");
       } else {
         setInitialRoute("Welcome");
       }
@@ -209,16 +212,13 @@ export default function App() {
       <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="MyListings" component={MyListingsScreen} />
-        <Stack.Screen name="BrowseCars" component={BrowseCarsScreen} />
         <Stack.Screen name="SellerBids" component={SellerBidsScreen} />
         <Stack.Screen name="PlaceBid" component={PlaceBidScreen} />
         <Stack.Screen name="CreateListing" component={CreateListingScreen} />
-        <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="EditListing" component={EditListingScreen} />
         <Stack.Screen name="MyBid" component={MyBidScreen} />
-        <Stack.Screen name="MyBids" component={MyBidsScreen} />
         <Stack.Screen name="MySoldListings" component={MySoldListingsScreen} />
         <Stack.Screen name="MyPurchases" component={MyPurchasesScreen} />
       </Stack.Navigator>
@@ -279,7 +279,7 @@ function LoginScreen({ navigation, route }) {
           if (!snap.empty) await updateDoc(doc(db, "users", snap.docs[0].id), { pushToken: token });
         }
       } catch (e) {}
-      navigation.navigate("Dashboard");
+      navigation.navigate("MainTabs");
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
   };
@@ -311,7 +311,7 @@ function LoginScreen({ navigation, route }) {
         companyName: companyName || "", pushToken: token || "",
         createdAt: serverTimestamp()
       });
-      navigation.navigate("Dashboard");
+      navigation.navigate("MainTabs");
     } catch (error) { Alert.alert("Error", error.message); }
     setLoading(false);
   };
@@ -372,106 +372,228 @@ function LoginScreen({ navigation, route }) {
   );
 }
 
-function DashboardScreen({ navigation }) {
-  const [listingCount, setListingCount] = useState(0);
-  const [soldCount, setSoldCount] = useState(0);
-  const [bidCount, setBidCount] = useState(0);
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: "#1B2B5E",
+        tabBarInactiveTintColor: "#888",
+        tabBarStyle: { height: 64, paddingBottom: 8, paddingTop: 6, backgroundColor: "#ffffff", borderTopColor: "#eee" },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarIcon: ({ focused, color }) => {
+          let name = "ellipse-outline";
+          if (route.name === "Home") name = focused ? "home" : "home-outline";
+          else if (route.name === "Browse") name = focused ? "search" : "search-outline";
+          else if (route.name === "Sell") name = "add-circle";
+          else if (route.name === "Bids") name = focused ? "pricetag" : "pricetag-outline";
+          else if (route.name === "Profile") name = focused ? "person" : "person-outline";
+          const size = route.name === "Sell" ? 38 : 24;
+          const tint = route.name === "Sell" ? "#c0392b" : color;
+          return <Ionicons name={name} size={size} color={tint} />;
+        },
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Browse" component={BrowseCarsScreen} />
+      <Tab.Screen
+        name="Sell"
+        component={SellTabPlaceholder}
+        options={{ tabBarLabel: "Sell" }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate("CreateListing");
+          },
+        })}
+      />
+      <Tab.Screen name="Bids" component={MyBidsScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
+
+function SellTabPlaceholder() {
+  return <View style={{flex: 1, backgroundColor: "#f5f5f5"}} />;
+}
+
+function timeAgo(ts) {
+  if (!ts) return "";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const secs = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  if (secs < 60) return secs + "s ago";
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return mins + "m ago";
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + "h ago";
+  const days = Math.floor(hours / 24);
+  if (days < 30) return days + "d ago";
+  const months = Math.floor(days / 30);
+  return months + "mo ago";
+}
+
+function HomeScreen({ navigation }) {
   const [userName, setUserName] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [featured, setFeatured] = useState([]);
+  const [activity, setActivity] = useState([]);
   const user = auth.currentUser;
 
-  const [myListings, setMyListings] = useState([]);
-
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchHome = async () => {
       try {
         const userSnap = await getDocs(query(collection(db, "users"), where("uid", "==", user.uid)));
         if (!userSnap.empty) setUserName(userSnap.docs[0].data().firstName || "");
-        const listingsSnap = await getDocs(query(collection(db, "listings"), where("sellerId", "==", user.uid)));
-        const listingsData = listingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const activeListings = listingsData.filter(l => l.status !== "sold" && l.status !== "deleted");
-        setListingCount(activeListings.length);
-        setSoldCount(listingsData.filter(l => l.status === "sold").length);
-        const withCounts = await attachBidCounts(activeListings);
-        withCounts.sort((a, b) => {
-          if (b.bidCount !== a.bidCount) return b.bidCount - a.bidCount;
-          return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+
+        const listingsSnap = await getDocs(collection(db, "listings"));
+        const listings = listingsSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(l => l.status === "active" || (l.status !== "sold" && l.status !== "deleted"));
+
+        const ids = listings.map(l => l.id);
+        const bidStats = {};
+        if (ids.length > 0) {
+          for (let i = 0; i < ids.length; i += 30) {
+            const chunk = ids.slice(i, i + 30);
+            const snap = await getDocs(query(collection(db, "bids"), where("listingId", "in", chunk)));
+            snap.docs.forEach(d => {
+              const b = d.data();
+              const s = bidStats[b.listingId] || { count: 0, max: 0 };
+              s.count++;
+              if (b.amount > s.max) s.max = b.amount;
+              bidStats[b.listingId] = s;
+            });
+          }
+        }
+        listings.forEach(l => {
+          const s = bidStats[l.id] || { count: 0, max: 0 };
+          l.bidCount = s.count;
+          l.highestBid = s.max;
         });
-        setMyListings(withCounts);
-        const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
-        setBidCount(bidsSnap.size);
-        
+
+        const featuredSorted = [...listings]
+          .sort((a, b) => (b.bidCount - a.bidCount) || ((b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)))
+          .slice(0, 8);
+        setFeatured(featuredSorted);
+
+        const events = [];
+        const recentBidsSnap = await getDocs(query(collection(db, "bids"), orderBy("createdAt", "desc"), limit(15)));
+        const listingById = Object.fromEntries(listings.map(l => [l.id, l]));
+        for (const d of recentBidsSnap.docs) {
+          const b = d.data();
+          const l = listingById[b.listingId];
+          events.push({
+            id: "bid-" + d.id,
+            type: "bid",
+            ts: b.createdAt,
+            amount: b.amount,
+            label: l ? l.year + " " + l.make + " " + l.model : "a vehicle",
+          });
+        }
+        const soldSnap = await getDocs(query(collection(db, "listings"), where("status", "==", "sold")));
+        for (const d of soldSnap.docs) {
+          const l = d.data();
+          events.push({
+            id: "sold-" + d.id,
+            type: "sold",
+            ts: l.createdAt,
+            amount: l.soldPrice,
+            label: l.year + " " + l.make + " " + l.model,
+          });
+        }
+        events.sort((a, b) => (b.ts?.seconds || 0) - (a.ts?.seconds || 0));
+        setActivity(events.slice(0, 12));
       } catch(e) {}
-      setLoading(false);
     };
-    const unsubscribe = navigation.addListener("focus", fetchStats);
+    const unsubscribe = navigation.addListener("focus", fetchHome);
     return unsubscribe;
   }, [navigation]);
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    navigation.navigate("Welcome");
-  };
-
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.homeContainer} contentContainerStyle={{paddingBottom: 32}}>
       <StatusBar style="dark" />
-      <View style={styles.dashboardHeader}>
-        <Text style={styles.logo}>Salvager</Text>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
+      <View style={styles.homeHeader}>
+        <Text style={styles.heroBrand}>Salvager</Text>
+        <Text style={styles.heroGreeting}>Welcome back{userName ? ", " + userName : ""}</Text>
+      </View>
+
+      <TouchableOpacity style={styles.heroCta} onPress={() => navigation.navigate("CreateListing")}>
+        <View style={{flexDirection: "row", alignItems: "center"}}>
+          <Ionicons name="add-circle" size={36} color="#ffffff" style={{marginRight: 12}} />
+          <View style={{flex: 1}}>
+            <Text style={styles.heroCtaTitle}>List a Car</Text>
+            <Text style={styles.heroCtaSubtitle}>Get offers from multiple dealers</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color="#ffffff" />
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionHeader}>Featured Listings</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("MainTabs", { screen: "Browse" })}>
+          <Text style={styles.sectionLink}>See all</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.tagline}>Welcome back{userName ? ", " + userName : ""}!</Text>
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{listingCount}</Text>
-          <Text style={styles.statLabel}>Active Listings</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{soldCount}</Text>
-          <Text style={styles.statLabel}>Sold</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{bidCount}</Text>
-          <Text style={styles.statLabel}>Bids Placed</Text>
-        </View>
+      {featured.length === 0 ? (
+        <Text style={styles.softText}>No active listings yet. Be the first to list a car.</Text>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal: 16, paddingBottom: 8}}>
+          {featured.map(l => (
+            <TouchableOpacity key={l.id} style={styles.featuredCard} onPress={() => navigation.navigate("PlaceBid", { listing: l })}>
+              {l.photos && l.photos.length > 0 ? (
+                <Image source={{ uri: l.photos[0] }} style={styles.featuredPhoto} />
+              ) : (
+                <View style={[styles.featuredPhoto, {alignItems: "center", justifyContent: "center", backgroundColor: "#eee"}]}>
+                  <Ionicons name="car-outline" size={36} color="#aaa" />
+                </View>
+              )}
+              <View style={styles.featuredBidPill}>
+                <Text style={styles.featuredBidPillText}>{l.bidCount} {l.bidCount === 1 ? "bid" : "bids"}</Text>
+              </View>
+              <View style={{padding: 10}}>
+                <Text style={styles.featuredTitle} numberOfLines={1}>{l.year} {l.make} {l.model}</Text>
+                <Text style={styles.featuredHighest}>{l.highestBid > 0 ? "Top bid $" + l.highestBid : "No bids yet"}</Text>
+                <View style={{flexDirection: "row", alignItems: "center", marginTop: 4}}>
+                  <Ionicons name="location-outline" size={12} color="#888" />
+                  <Text style={styles.featuredLocation} numberOfLines={1}>{l.city || "—"}{l.zip ? " · " + l.zip : ""}</Text>
+                </View>
+                <View style={{flexDirection: "row", alignItems: "center", marginTop: 4}}>
+                  <Ionicons name={l.needsTow ? "warning-outline" : "checkmark-circle-outline"} size={12} color={l.needsTow ? "#c0392b" : "#27AE60"} />
+                  <Text style={[styles.featuredPickup, {color: l.needsTow ? "#c0392b" : "#27AE60"}]}>{l.needsTow ? "Buyer pickup" : "Will deliver"}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionHeader}>Live Activity</Text>
       </View>
-      <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("Profile")}>
-        <Text style={styles.dealerButtonText}>My Profile</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("CreateListing")}>
-        <Text style={styles.sellerButtonText}>+ List a Car</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("BrowseCars")}>
-        <Text style={styles.dealerButtonText}>Browse & Bid on Cars</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("MyBids")}>
-        <Text style={styles.dealerButtonText}>My Bids</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("MySoldListings")}>
-        <Text style={styles.dealerButtonText}>My Sold Listings</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("MyPurchases")}>
-        <Text style={styles.dealerButtonText}>My Purchases</Text>
-      </TouchableOpacity>
-      {myListings.length > 0 && (
-        <View>
-          <Text style={{color: "#ffffff", fontSize: 18, fontWeight: "bold", textAlign: "center", marginTop: 0, marginBottom: 8, backgroundColor: "#1B2B5E", padding: 18, borderRadius: 14}}>My Active Listings</Text>
-          {myListings.map(listing => (
-            <ListingCard
-              key={listing.id}
-              listing={listing}
-              onPress={() => navigation.navigate("SellerBids", { listing })}
-            >
-              <Text style={styles.viewBidsText}>{listing.bidCount > 0 ? "View Bids →" : "No bids yet"}</Text>
-            </ListingCard>
+      {activity.length === 0 ? (
+        <Text style={styles.softText}>No recent activity yet.</Text>
+      ) : (
+        <View style={{paddingHorizontal: 16}}>
+          {activity.map(e => (
+            <View key={e.id} style={styles.activityRow}>
+              <Ionicons
+                name={e.type === "sold" ? "checkmark-done-circle" : "pricetag"}
+                size={20}
+                color={e.type === "sold" ? "#27AE60" : "#1B2B5E"}
+                style={{marginRight: 10}}
+              />
+              <View style={{flex: 1}}>
+                <Text style={styles.activityLabel}>
+                  {e.type === "sold"
+                    ? <><Text style={{fontWeight: "bold"}}>{e.label}</Text> sold for ${e.amount}</>
+                    : <>New bid <Text style={{fontWeight: "bold"}}>${e.amount}</Text> on {e.label}</>}
+                </Text>
+                <Text style={styles.activityTime}>{timeAgo(e.ts)}</Text>
+              </View>
+            </View>
           ))}
         </View>
       )}
     </ScrollView>
-    </KeyboardAvoidingView>
   );
 }
 
@@ -483,7 +605,7 @@ function MyListingsScreen({ navigation }) {
       const user = auth.currentUser;
       const q = query(collection(db, "listings"), where("sellerId", "==", user.uid));
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.status !== "deleted");
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.status !== "deleted" && l.status !== "sold");
       const active = data.filter(l => l.status !== "sold");
       const activeWithCounts = await attachBidCounts(active);
       const countById = Object.fromEntries(activeWithCounts.map(l => [l.id, l.bidCount]));
@@ -507,14 +629,11 @@ function MyListingsScreen({ navigation }) {
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
-        <Text style={styles.dashboardTitle}>My Listings</Text>
+        <Text style={styles.dashboardTitle}>My Active Listings</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.logoutText}>Back</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("Profile")}>
-        <Text style={styles.dealerButtonText}>My Profile</Text>
-      </TouchableOpacity>
       <TouchableOpacity style={styles.sellerButton} onPress={() => navigation.navigate("CreateListing")}>
         <Text style={styles.sellerButtonText}>+ List a Car</Text>
       </TouchableOpacity>
@@ -1399,7 +1518,30 @@ function ProfileScreen({ navigation }) {
   const [prefRunsOnly, setPrefRunsOnly] = useState(false);
   const [prefCleanTitleOnly, setPrefCleanTitleOnly] = useState(false);
   const [smsNotifications, setSmsNotifications] = useState(false);
+  const [activeCount, setActiveCount] = useState(0);
+  const [soldCount, setSoldCount] = useState(0);
+  const [bidsPlacedCount, setBidsPlacedCount] = useState(0);
   const user = auth.currentUser;
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const listingsSnap = await getDocs(query(collection(db, "listings"), where("sellerId", "==", user.uid)));
+        const data = listingsSnap.docs.map(d => d.data());
+        setActiveCount(data.filter(l => l.status !== "sold" && l.status !== "deleted").length);
+        setSoldCount(data.filter(l => l.status === "sold").length);
+        const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
+        setBidsPlacedCount(bidsSnap.size);
+      } catch(e) {}
+    };
+    const unsub = navigation.addListener("focus", fetchCounts);
+    return unsub;
+  }, [navigation]);
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigation.reset({ index: 0, routes: [{ name: "Welcome" }] });
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -1496,10 +1638,47 @@ function ProfileScreen({ navigation }) {
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.dashboardHeader}>
         <Text style={styles.dashboardTitle}>My Profile</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.logoutText}>Back</Text>
+      </View>
+
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{activeCount}</Text>
+          <Text style={styles.statLabel}>Active</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{soldCount}</Text>
+          <Text style={styles.statLabel}>Sold</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{bidsPlacedCount}</Text>
+          <Text style={styles.statLabel}>Bids Placed</Text>
+        </View>
+      </View>
+
+      <View style={styles.listingCard}>
+        <Text style={styles.sectionLabel}>My Activity</Text>
+        <TouchableOpacity style={styles.profileLinkRow} onPress={() => navigation.navigate("MyListings")}>
+          <Ionicons name="car-outline" size={20} color="#1B2B5E" style={{width: 28}} />
+          <Text style={styles.profileLinkText}>My Active Listings</Text>
+          <Ionicons name="chevron-forward" size={18} color="#aaa" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.profileLinkRow} onPress={() => navigation.navigate("MySoldListings")}>
+          <Ionicons name="checkmark-done-circle-outline" size={20} color="#1B2B5E" style={{width: 28}} />
+          <Text style={styles.profileLinkText}>My Sold Listings</Text>
+          <Ionicons name="chevron-forward" size={18} color="#aaa" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.profileLinkRow} onPress={() => navigation.getParent()?.navigate("Bids") || navigation.navigate("Bids")}>
+          <Ionicons name="pricetag-outline" size={20} color="#1B2B5E" style={{width: 28}} />
+          <Text style={styles.profileLinkText}>My Bids</Text>
+          <Ionicons name="chevron-forward" size={18} color="#aaa" />
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.profileLinkRow, {borderBottomWidth: 0}]} onPress={() => navigation.navigate("MyPurchases")}>
+          <Ionicons name="bag-check-outline" size={20} color="#1B2B5E" style={{width: 28}} />
+          <Text style={styles.profileLinkText}>My Purchases</Text>
+          <Ionicons name="chevron-forward" size={18} color="#aaa" />
         </TouchableOpacity>
       </View>
+
       <View style={styles.listingCard}>
         <Text style={styles.sectionLabel}>Account Info</Text>
         <Text style={styles.listingDetail}>Email: {user.email}</Text>
@@ -1608,6 +1787,11 @@ function ProfileScreen({ navigation }) {
           <Text style={styles.listingDetail}>No preferences set. Tap Edit to get notified about new listings.</Text>
         )}
       </View>
+
+      <TouchableOpacity style={styles.logoutCard} onPress={handleLogout}>
+        <Ionicons name="log-out-outline" size={20} color="#c0392b" style={{marginRight: 8}} />
+        <Text style={styles.logoutCardText}>Log out</Text>
+      </TouchableOpacity>
     </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -2201,6 +2385,32 @@ const styles = StyleSheet.create({
   towingToggleIn: { backgroundColor: "#27AE60", padding: 18, borderRadius: 14, alignItems: "center" },
   towingToggleOut: { backgroundColor: "#c0392b", padding: 18, borderRadius: 14, alignItems: "center" },
   towingToggleText: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
+  homeContainer: { flex: 1, backgroundColor: "#f5f5f5" },
+  homeHeader: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 16 },
+  heroBrand: { fontSize: 32, fontWeight: "bold", color: "#1B2B5E", letterSpacing: 0.5 },
+  heroGreeting: { fontSize: 16, color: "#666", marginTop: 2 },
+  heroCta: { backgroundColor: "#c0392b", marginHorizontal: 16, padding: 18, borderRadius: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 5 },
+  heroCtaTitle: { color: "#ffffff", fontSize: 22, fontWeight: "bold" },
+  heroCtaSubtitle: { color: "#ffeae6", fontSize: 13, marginTop: 2 },
+  sectionHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginTop: 28, marginBottom: 8 },
+  sectionHeader: { fontSize: 18, fontWeight: "bold", color: "#1B2B5E" },
+  sectionLink: { fontSize: 13, color: "#1B2B5E", fontWeight: "600" },
+  softText: { color: "#888", fontSize: 14, paddingHorizontal: 20, marginTop: 4 },
+  featuredCard: { width: 220, backgroundColor: "#ffffff", borderRadius: 14, marginRight: 12, borderWidth: 1, borderColor: "#eee", overflow: "hidden", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
+  featuredPhoto: { width: "100%", height: 130 },
+  featuredBidPill: { position: "absolute", top: 10, right: 10, backgroundColor: "rgba(27,43,94,0.92)", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12 },
+  featuredBidPillText: { color: "#ffffff", fontSize: 11, fontWeight: "bold" },
+  featuredTitle: { fontSize: 14, fontWeight: "bold", color: "#1a1a1a" },
+  featuredHighest: { fontSize: 13, color: "#1B2B5E", fontWeight: "600", marginTop: 2 },
+  featuredLocation: { fontSize: 12, color: "#888", marginLeft: 4 },
+  featuredPickup: { fontSize: 11, fontWeight: "600", marginLeft: 4 },
+  activityRow: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#eee" },
+  activityLabel: { fontSize: 14, color: "#1a1a1a" },
+  activityTime: { fontSize: 12, color: "#888", marginTop: 2 },
+  profileLinkRow: { flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
+  profileLinkText: { flex: 1, fontSize: 15, color: "#1a1a1a", fontWeight: "500" },
+  logoutCard: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 16, marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: "#c0392b", backgroundColor: "#ffffff" },
+  logoutCardText: { color: "#c0392b", fontSize: 16, fontWeight: "bold" },
   towingLockedNote: { color: "#555555", fontSize: 13, fontStyle: "italic", marginTop: -4 },
 });
 
