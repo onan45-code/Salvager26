@@ -1,4 +1,4 @@
-// Deployed: 2026-05-07d — force redeploy with API key code
+// Deployed: 2026-05-10 — skip role:seller from SMS fanout
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const { logger } = require("firebase-functions");
@@ -40,6 +40,7 @@ exports.onListingCreate = onDocumentCreated(
       const u = userDoc.data();
 
       if (u.uid === listing.sellerId) { skipped++; continue; }
+      if (u.role === "seller") { skipped++; continue; }
       if (!u.smsNotifications) { skipped++; continue; }
 
       const phone = normalizePhone(u.phone);

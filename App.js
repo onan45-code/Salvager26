@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import { auth, db, storage } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, setDoc, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, setDoc, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -254,6 +254,7 @@ function LoginScreen({ navigation, route }) {
   const [phone, setPhone] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [role, setRole] = useState("both");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -308,7 +309,7 @@ function LoginScreen({ navigation, route }) {
       try { token = await registerForPushNotifications(); } catch (e) {}
       await addDoc(collection(db, "users"), {
         uid: cred.user.uid, email, firstName, lastName, phone, zipCode,
-        companyName: companyName || "", pushToken: token || "",
+        companyName: companyName || "", role, pushToken: token || "",
         createdAt: serverTimestamp()
       });
       navigation.navigate("MainTabs");
@@ -332,6 +333,18 @@ function LoginScreen({ navigation, route }) {
             <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor="#999999" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
             <TextInput style={styles.input} placeholder="ZIP Code" placeholderTextColor="#999999" keyboardType="numeric" maxLength={5} value={zipCode} onChangeText={setZipCode} />
             <TextInput style={styles.input} placeholder="Company Name (optional)" placeholderTextColor="#999999" value={companyName} onChangeText={setCompanyName} />
+            <Text style={styles.sectionLabel}>I want to</Text>
+            <View style={styles.toggleRow}>
+              <TouchableOpacity style={[styles.toggleButton, role === "buyer" && styles.toggleActive]} onPress={() => setRole("buyer")}>
+                <Text style={[styles.toggleText, role === "buyer" && styles.toggleTextActive]}>Buy cars</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.toggleButton, role === "seller" && styles.toggleActive]} onPress={() => setRole("seller")}>
+                <Text style={[styles.toggleText, role === "seller" && styles.toggleTextActive]}>Sell cars</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.toggleButton, role === "both" && styles.toggleActive]} onPress={() => setRole("both")}>
+                <Text style={[styles.toggleText, role === "both" && styles.toggleTextActive]}>Both</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
         <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#999999" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
@@ -373,6 +386,22 @@ function LoginScreen({ navigation, route }) {
 }
 
 function MainTabs() {
+  const [role, setRole] = useState("both");
+
+  useEffect(() => {
+    const u = auth.currentUser;
+    if (!u) return;
+    const q = query(collection(db, "users"), where("uid", "==", u.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      if (!snap.empty) setRole(snap.docs[0].data().role || "both");
+    });
+    return unsub;
+  }, []);
+
+  const showBrowse = role === "buyer" || role === "both";
+  const showListings = role === "seller" || role === "both";
+  const showBids = role === "buyer" || role === "both";
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -393,11 +422,15 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Browse" component={BrowseCarsScreen} />
+      <Tab.Screen
+        name="Browse"
+        component={BrowseCarsScreen}
+        options={showBrowse ? {} : { tabBarButton: () => null }}
+      />
       <Tab.Screen
         name="Listings"
         component={SellTabPlaceholder}
-        options={{ tabBarLabel: "Listings" }}
+        options={{ tabBarLabel: "Listings", ...(showListings ? {} : { tabBarButton: () => null }) }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
             e.preventDefault();
@@ -405,7 +438,11 @@ function MainTabs() {
           },
         })}
       />
-      <Tab.Screen name="Bids" component={MyBidsScreen} />
+      <Tab.Screen
+        name="Bids"
+        component={MyBidsScreen}
+        options={showBids ? {} : { tabBarButton: () => null }}
+      />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -432,6 +469,7 @@ function timeAgo(ts) {
 
 function HomeScreen({ navigation }) {
   const [userName, setUserName] = useState("");
+  const [role, setRole] = useState("both");
   const [featured, setFeatured] = useState([]);
   const [activity, setActivity] = useState([]);
   const [activeCount, setActiveCount] = useState(0);
@@ -443,7 +481,10 @@ function HomeScreen({ navigation }) {
     const fetchHome = async () => {
       try {
         const userSnap = await getDocs(query(collection(db, "users"), where("uid", "==", user.uid)));
-        if (!userSnap.empty) setUserName(userSnap.docs[0].data().firstName || "");
+        if (!userSnap.empty) {
+          setUserName(userSnap.docs[0].data().firstName || "");
+          setRole(userSnap.docs[0].data().role || "both");
+        }
 
         const listingsSnap = await getDocs(collection(db, "listings"));
         const allListings = listingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -530,48 +571,68 @@ function HomeScreen({ navigation }) {
       </View>
 
       <View style={[styles.statsRow, {paddingHorizontal: 16}]}>
-        <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("MyListings")} activeOpacity={0.7}>
-          <View style={styles.statTopRow}>
-            <View style={[styles.statIconCircle, {backgroundColor: "#1B2B5E"}]}>
-              <Ionicons name="car" size={16} color="#ffffff" />
+        {(role === "seller" || role === "both") && (
+          <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("MyListings")} activeOpacity={0.7}>
+            <View style={styles.statTopRow}>
+              <View style={[styles.statIconCircle, {backgroundColor: "#1B2B5E"}]}>
+                <Ionicons name="car" size={16} color="#ffffff" />
+              </View>
+              <Text style={styles.statNumber}>{activeCount}</Text>
             </View>
-            <Text style={styles.statNumber}>{activeCount}</Text>
-          </View>
-          <Text style={styles.statLabel}>Listings</Text>
-          <Text style={styles.statLink}>View all →</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("MySoldListings")} activeOpacity={0.7}>
-          <View style={styles.statTopRow}>
-            <View style={[styles.statIconCircle, {backgroundColor: "#27AE60"}]}>
-              <Ionicons name="cash" size={16} color="#ffffff" />
+            <Text style={styles.statLabel}>Listings</Text>
+            <Text style={styles.statLink}>View all →</Text>
+          </TouchableOpacity>
+        )}
+        {(role === "seller" || role === "both") && (
+          <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("MySoldListings")} activeOpacity={0.7}>
+            <View style={styles.statTopRow}>
+              <View style={[styles.statIconCircle, {backgroundColor: "#27AE60"}]}>
+                <Ionicons name="cash" size={16} color="#ffffff" />
+              </View>
+              <Text style={styles.statNumber}>{soldCount}</Text>
             </View>
-            <Text style={styles.statNumber}>{soldCount}</Text>
-          </View>
-          <Text style={styles.statLabel}>Sold</Text>
-          <Text style={styles.statLink}>View all →</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("Bids")} activeOpacity={0.7}>
-          <View style={styles.statTopRow}>
-            <View style={[styles.statIconCircle, {backgroundColor: "#c0392b"}]}>
-              <Ionicons name="hammer" size={16} color="#ffffff" />
+            <Text style={styles.statLabel}>Sold</Text>
+            <Text style={styles.statLink}>View all →</Text>
+          </TouchableOpacity>
+        )}
+        {(role === "buyer" || role === "both") && (
+          <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("Bids")} activeOpacity={0.7}>
+            <View style={styles.statTopRow}>
+              <View style={[styles.statIconCircle, {backgroundColor: "#c0392b"}]}>
+                <Ionicons name="hammer" size={16} color="#ffffff" />
+              </View>
+              <Text style={styles.statNumber}>{bidsPlacedCount}</Text>
             </View>
-            <Text style={styles.statNumber}>{bidsPlacedCount}</Text>
-          </View>
-          <Text style={styles.statLabel}>Bids</Text>
-          <Text style={styles.statLink}>View all →</Text>
-        </TouchableOpacity>
+            <Text style={styles.statLabel}>Bids</Text>
+            <Text style={styles.statLink}>View all →</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      <TouchableOpacity style={styles.heroCta} onPress={() => navigation.navigate("CreateListing")}>
-        <View style={{flexDirection: "row", alignItems: "center"}}>
-          <Ionicons name="add-circle" size={36} color="#ffffff" style={{marginRight: 12}} />
-          <View style={{flex: 1}}>
-            <Text style={styles.heroCtaTitle}>List a Car</Text>
-            <Text style={styles.heroCtaSubtitle}>Get offers from multiple dealers</Text>
+      {(role === "seller" || role === "both") && (
+        <TouchableOpacity style={styles.heroCta} onPress={() => navigation.navigate("CreateListing")}>
+          <View style={{flexDirection: "row", alignItems: "center"}}>
+            <Ionicons name="add-circle" size={36} color="#ffffff" style={{marginRight: 12}} />
+            <View style={{flex: 1}}>
+              <Text style={styles.heroCtaTitle}>List a Car</Text>
+              <Text style={styles.heroCtaSubtitle}>Get offers from multiple dealers</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#ffffff" />
           </View>
-          <Ionicons name="chevron-forward" size={24} color="#ffffff" />
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      )}
+      {role === "buyer" && (
+        <TouchableOpacity style={[styles.heroCta, {backgroundColor: "#1B2B5E"}]} onPress={() => navigation.navigate("Browse")}>
+          <View style={{flexDirection: "row", alignItems: "center"}}>
+            <Ionicons name="search" size={36} color="#ffffff" style={{marginRight: 12}} />
+            <View style={{flex: 1}}>
+              <Text style={styles.heroCtaTitle}>Browse Cars</Text>
+              <Text style={styles.heroCtaSubtitle}>Find your next salvage find</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#ffffff" />
+          </View>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionHeader}>Featured Listings</Text>
@@ -1564,6 +1625,7 @@ function ProfileScreen({ navigation }) {
   const [prefRunsOnly, setPrefRunsOnly] = useState(false);
   const [prefCleanTitleOnly, setPrefCleanTitleOnly] = useState(false);
   const [smsNotifications, setSmsNotifications] = useState(false);
+  const [role, setRole] = useState("both");
   const [activeCount, setActiveCount] = useState(0);
   const [soldCount, setSoldCount] = useState(0);
   const [bidsPlacedCount, setBidsPlacedCount] = useState(0);
@@ -1610,6 +1672,7 @@ function ProfileScreen({ navigation }) {
           setPrefRunsOnly(!!bp.runsOnly);
           setPrefCleanTitleOnly(!!bp.cleanTitleOnly);
           setSmsNotifications(!!data.smsNotifications);
+          setRole(data.role || "both");
         }
       } catch(e) {}
       setLoading(false);
@@ -1620,18 +1683,20 @@ function ProfileScreen({ navigation }) {
   const handleSave = async () => {
     try {
       if (userData && userData.id) {
-        await updateDoc(doc(db, "users", userData.id), { firstName, lastName, phone, zipCode, companyName });
+        await updateDoc(doc(db, "users", userData.id), { firstName, lastName, phone, zipCode, companyName, role });
       } else {
         const newDoc = await addDoc(collection(db, "users"), {
-          uid: user.uid, email: user.email, firstName, lastName, phone, zipCode, companyName,
+          uid: user.uid, email: user.email, firstName, lastName, phone, zipCode, companyName, role,
           pushToken: "", createdAt: serverTimestamp()
         });
-        setUserData({ id: newDoc.id, uid: user.uid, firstName, lastName, phone, zipCode, companyName });
+        setUserData({ id: newDoc.id, uid: user.uid, firstName, lastName, phone, zipCode, companyName, role });
       }
       Alert.alert("Success", "Profile updated!");
       setEditing(false);
     } catch(e) { Alert.alert("Error", e.message); }
   };
+
+  const roleLabel = role === "buyer" ? "Buyer" : role === "seller" ? "Seller" : "Buyer + Seller";
 
   const handleSavePrefs = async () => {
     try {
@@ -1703,26 +1768,34 @@ function ProfileScreen({ navigation }) {
 
       <View style={styles.listingCard}>
         <Text style={styles.sectionLabel}>My Activity</Text>
-        <TouchableOpacity style={styles.profileLinkRow} onPress={() => navigation.navigate("MyListings")}>
-          <Ionicons name="car-outline" size={20} color="#1B2B5E" style={{width: 28}} />
-          <Text style={styles.profileLinkText}>My Active Listings</Text>
-          <Ionicons name="chevron-forward" size={18} color="#aaa" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.profileLinkRow} onPress={() => navigation.navigate("MySoldListings")}>
-          <Ionicons name="checkmark-done-circle-outline" size={20} color="#1B2B5E" style={{width: 28}} />
-          <Text style={styles.profileLinkText}>My Sold Listings</Text>
-          <Ionicons name="chevron-forward" size={18} color="#aaa" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.profileLinkRow} onPress={() => navigation.getParent()?.navigate("Bids") || navigation.navigate("Bids")}>
-          <Ionicons name="pricetag-outline" size={20} color="#1B2B5E" style={{width: 28}} />
-          <Text style={styles.profileLinkText}>My Bids</Text>
-          <Ionicons name="chevron-forward" size={18} color="#aaa" />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.profileLinkRow, {borderBottomWidth: 0}]} onPress={() => navigation.navigate("MyPurchases")}>
-          <Ionicons name="bag-check-outline" size={20} color="#1B2B5E" style={{width: 28}} />
-          <Text style={styles.profileLinkText}>My Purchases</Text>
-          <Ionicons name="chevron-forward" size={18} color="#aaa" />
-        </TouchableOpacity>
+        {(role === "seller" || role === "both") && (
+          <TouchableOpacity style={styles.profileLinkRow} onPress={() => navigation.navigate("MyListings")}>
+            <Ionicons name="car-outline" size={20} color="#1B2B5E" style={{width: 28}} />
+            <Text style={styles.profileLinkText}>My Active Listings</Text>
+            <Ionicons name="chevron-forward" size={18} color="#aaa" />
+          </TouchableOpacity>
+        )}
+        {(role === "seller" || role === "both") && (
+          <TouchableOpacity style={styles.profileLinkRow} onPress={() => navigation.navigate("MySoldListings")}>
+            <Ionicons name="checkmark-done-circle-outline" size={20} color="#1B2B5E" style={{width: 28}} />
+            <Text style={styles.profileLinkText}>My Sold Listings</Text>
+            <Ionicons name="chevron-forward" size={18} color="#aaa" />
+          </TouchableOpacity>
+        )}
+        {(role === "buyer" || role === "both") && (
+          <TouchableOpacity style={styles.profileLinkRow} onPress={() => navigation.getParent()?.navigate("Bids") || navigation.navigate("Bids")}>
+            <Ionicons name="pricetag-outline" size={20} color="#1B2B5E" style={{width: 28}} />
+            <Text style={styles.profileLinkText}>My Bids</Text>
+            <Ionicons name="chevron-forward" size={18} color="#aaa" />
+          </TouchableOpacity>
+        )}
+        {(role === "buyer" || role === "both") && (
+          <TouchableOpacity style={[styles.profileLinkRow, {borderBottomWidth: 0}]} onPress={() => navigation.navigate("MyPurchases")}>
+            <Ionicons name="bag-check-outline" size={20} color="#1B2B5E" style={{width: 28}} />
+            <Text style={styles.profileLinkText}>My Purchases</Text>
+            <Ionicons name="chevron-forward" size={18} color="#aaa" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.listingCard}>
@@ -1745,6 +1818,18 @@ function ProfileScreen({ navigation }) {
             <TextInput style={styles.input} placeholder="Phone" placeholderTextColor="#999999" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
             <TextInput style={styles.input} placeholder="ZIP Code" placeholderTextColor="#999999" keyboardType="numeric" value={zipCode} onChangeText={setZipCode} />
             <TextInput style={styles.input} placeholder="Company Name (optional)" placeholderTextColor="#999999" value={companyName} onChangeText={setCompanyName} />
+            <Text style={styles.sectionLabel}>I want to</Text>
+            <View style={styles.toggleRow}>
+              <TouchableOpacity style={[styles.toggleButton, role === "buyer" && styles.toggleActive]} onPress={() => setRole("buyer")}>
+                <Text style={[styles.toggleText, role === "buyer" && styles.toggleTextActive]}>Buy cars</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.toggleButton, role === "seller" && styles.toggleActive]} onPress={() => setRole("seller")}>
+                <Text style={[styles.toggleText, role === "seller" && styles.toggleTextActive]}>Sell cars</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.toggleButton, role === "both" && styles.toggleActive]} onPress={() => setRole("both")}>
+                <Text style={[styles.toggleText, role === "both" && styles.toggleTextActive]}>Both</Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity style={styles.dealerButton} onPress={handleSave}>
               <Text style={styles.dealerButtonText}>Save Changes</Text>
             </TouchableOpacity>
@@ -1755,9 +1840,11 @@ function ProfileScreen({ navigation }) {
             <Text style={styles.listingDetail}>Phone: {phone}</Text>
             <Text style={styles.listingDetail}>ZIP Code: {zipCode}</Text>
             {companyName ? <Text style={styles.listingDetail}>Company: {companyName}</Text> : null}
+            <Text style={styles.listingDetail}>Role: {roleLabel}</Text>
           </>
         )}
       </View>
+      {(role === "buyer" || role === "both") && (
       <View style={styles.listingCard}>
         <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12}}>
           <Text style={styles.sectionLabel}>Buying Preferences</Text>
@@ -1833,6 +1920,7 @@ function ProfileScreen({ navigation }) {
           <Text style={styles.listingDetail}>No preferences set. Tap Edit to get notified about new listings.</Text>
         )}
       </View>
+      )}
 
       <TouchableOpacity style={styles.logoutCard} onPress={handleLogout}>
         <Ionicons name="log-out-outline" size={20} color="#c0392b" style={{marginRight: 8}} />
