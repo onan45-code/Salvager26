@@ -530,18 +530,24 @@ function HomeScreen({ navigation }) {
       </View>
 
       <View style={[styles.statsRow, {paddingHorizontal: 16}]}>
-        <View style={styles.statCard}>
+        <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("MyListings")} activeOpacity={0.7}>
+          <Ionicons name="car" size={20} color="#1B2B5E" style={{marginBottom: 4}} />
           <Text style={styles.statNumber}>{activeCount}</Text>
           <Text style={styles.statLabel}>Active Listings</Text>
-        </View>
-        <View style={styles.statCard}>
+          <Text style={styles.statLink}>View all →</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("MySoldListings")} activeOpacity={0.7}>
+          <Ionicons name="cash" size={20} color="#27AE60" style={{marginBottom: 4}} />
           <Text style={styles.statNumber}>{soldCount}</Text>
           <Text style={styles.statLabel}>Sold</Text>
-        </View>
-        <View style={styles.statCard}>
+          <Text style={styles.statLink}>View all →</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("Bids")} activeOpacity={0.7}>
+          <Ionicons name="hammer" size={20} color="#c0392b" style={{marginBottom: 4}} />
           <Text style={styles.statNumber}>{bidsPlacedCount}</Text>
           <Text style={styles.statLabel}>Bids Placed</Text>
-        </View>
+          <Text style={styles.statLink}>View all →</Text>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.heroCta} onPress={() => navigation.navigate("CreateListing")}>
@@ -2349,6 +2355,7 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, backgroundColor: "#ffffff", borderRadius: 16, padding: 12, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, borderWidth: 1, borderColor: "#eeeeee" },
   statNumber: { fontSize: 28, fontWeight: "bold", color: "#1B2B5E" },
   statLabel: { fontSize: 12, color: "#555555", marginTop: 4, textAlign: "center" },
+  statLink: { fontSize: 11, color: "#1B2B5E", fontWeight: "600", marginTop: 6 },
   listingCard: { backgroundColor: "#ffffff", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, borderWidth: 1, borderColor: "#eeeeee" },
   listingCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   listingTitle: { color: "#1a1a1a", fontSize: 18, fontWeight: "bold" },
