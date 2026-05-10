@@ -531,20 +531,32 @@ function HomeScreen({ navigation }) {
 
       <View style={[styles.statsRow, {paddingHorizontal: 16}]}>
         <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("MyListings")} activeOpacity={0.7}>
-          <Ionicons name="car" size={20} color="#1B2B5E" style={{marginBottom: 4}} />
-          <Text style={styles.statNumber}>{activeCount}</Text>
+          <View style={styles.statTopRow}>
+            <View style={[styles.statIconCircle, {backgroundColor: "#1B2B5E"}]}>
+              <Ionicons name="car" size={16} color="#ffffff" />
+            </View>
+            <Text style={styles.statNumber}>{activeCount}</Text>
+          </View>
           <Text style={styles.statLabel}>Active Listings</Text>
           <Text style={styles.statLink}>View all →</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("MySoldListings")} activeOpacity={0.7}>
-          <Ionicons name="cash" size={20} color="#27AE60" style={{marginBottom: 4}} />
-          <Text style={styles.statNumber}>{soldCount}</Text>
+          <View style={styles.statTopRow}>
+            <View style={[styles.statIconCircle, {backgroundColor: "#27AE60"}]}>
+              <Ionicons name="cash" size={16} color="#ffffff" />
+            </View>
+            <Text style={styles.statNumber}>{soldCount}</Text>
+          </View>
           <Text style={styles.statLabel}>Sold</Text>
           <Text style={styles.statLink}>View all →</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("Bids")} activeOpacity={0.7}>
-          <Ionicons name="hammer" size={20} color="#c0392b" style={{marginBottom: 4}} />
-          <Text style={styles.statNumber}>{bidsPlacedCount}</Text>
+          <View style={styles.statTopRow}>
+            <View style={[styles.statIconCircle, {backgroundColor: "#c0392b"}]}>
+              <Ionicons name="hammer" size={16} color="#ffffff" />
+            </View>
+            <Text style={styles.statNumber}>{bidsPlacedCount}</Text>
+          </View>
           <Text style={styles.statLabel}>Bids Placed</Text>
           <Text style={styles.statLink}>View all →</Text>
         </TouchableOpacity>
@@ -2352,10 +2364,12 @@ const styles = StyleSheet.create({
   emptyStateSubtext: { color: "#555555", fontSize: 14 },
   sectionLabel: { color: "#1B2B5E", fontSize: 14, fontWeight: "bold", marginTop: 8, textTransform: "uppercase" },
   statsRow: { flexDirection: "row", gap: 16, marginBottom: 24 },
-  statCard: { flex: 1, backgroundColor: "#ffffff", borderRadius: 16, padding: 12, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, borderWidth: 1, borderColor: "#eeeeee" },
-  statNumber: { fontSize: 28, fontWeight: "bold", color: "#1B2B5E" },
-  statLabel: { fontSize: 12, color: "#555555", marginTop: 4, textAlign: "center" },
-  statLink: { fontSize: 11, color: "#1B2B5E", fontWeight: "600", marginTop: 6 },
+  statCard: { flex: 1, backgroundColor: "#ffffff", borderRadius: 16, padding: 12, alignItems: "flex-start", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3, borderWidth: 1, borderColor: "#eeeeee" },
+  statTopRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
+  statIconCircle: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", marginRight: 8 },
+  statNumber: { fontSize: 24, fontWeight: "bold", color: "#1a1a1a" },
+  statLabel: { fontSize: 11, color: "#666666", fontWeight: "500" },
+  statLink: { fontSize: 11, color: "#1B2B5E", fontWeight: "600", marginTop: 4 },
   listingCard: { backgroundColor: "#ffffff", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4, borderWidth: 1, borderColor: "#eeeeee" },
   listingCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   listingTitle: { color: "#1a1a1a", fontSize: 18, fontWeight: "bold" },
