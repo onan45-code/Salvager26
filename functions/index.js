@@ -1,5 +1,6 @@
 // Deployed: 2026-05-10 — skip role:seller from SMS fanout
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const { logger } = require("firebase-functions");
 const admin = require("firebase-admin");
@@ -11,6 +12,89 @@ const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 const TWILIO_API_KEY_SID = defineSecret("TWILIO_API_KEY_SID");
 const TWILIO_API_KEY_SECRET = defineSecret("TWILIO_API_KEY_SECRET");
 const TWILIO_FROM_NUMBER = defineSecret("TWILIO_FROM_NUMBER");
+const TWILIO_VERIFY_SERVICE_SID = defineSecret("TWILIO_VERIFY_SERVICE_SID");
+
+function twilioClient() {
+  return twilio(
+    TWILIO_API_KEY_SID.value(),
+    TWILIO_API_KEY_SECRET.value(),
+    { accountSid: TWILIO_ACCOUNT_SID.value() }
+  );
+}
+
+exports.sendPhoneVerification = onCall(
+  {
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_VERIFY_SERVICE_SID],
+  },
+  async (request) => {
+    const phone = normalizePhone((request.data || {}).phoneNumber);
+    if (!phone) {
+      throw new HttpsError("invalid-argument", "Invalid phone number format");
+    }
+    try {
+      const verification = await twilioClient().verify.v2
+        .services(TWILIO_VERIFY_SERVICE_SID.value())
+        .verifications.create({ to: phone, channel: "sms" });
+      return { success: true, status: verification.status };
+    } catch (e) {
+      logger.error("sendPhoneVerification failed", { phone, code: e.code, message: e.message });
+      if (e.status === 429 || e.code === 60203) {
+        throw new HttpsError("resource-exhausted", "Too many attempts. Please wait a few minutes and try again.");
+      }
+      throw new HttpsError("internal", "Couldn't send verification code. Please try again.");
+    }
+  }
+);
+
+exports.checkPhoneVerification = onCall(
+  {
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_VERIFY_SERVICE_SID],
+  },
+  async (request) => {
+    const { phoneNumber, code } = request.data || {};
+    const phone = normalizePhone(phoneNumber);
+    if (!phone) {
+      throw new HttpsError("invalid-argument", "Invalid phone number format");
+    }
+    if (!code || typeof code !== "string") {
+      throw new HttpsError("invalid-argument", "Code is required");
+    }
+    let check;
+    try {
+      check = await twilioClient().verify.v2
+        .services(TWILIO_VERIFY_SERVICE_SID.value())
+        .verificationChecks.create({ to: phone, code });
+    } catch (e) {
+      logger.error("checkPhoneVerification failed", { phone, code: e.code, message: e.message });
+      if (e.status === 429 || e.code === 60202) {
+        throw new HttpsError("resource-exhausted", "Too many attempts. Please wait a few minutes and try again.");
+      }
+      throw new HttpsError("internal", "Couldn't verify code. Please try again.");
+    }
+    if (check.status !== "approved") {
+      return { approved: false, status: check.status };
+    }
+    if (request.auth && request.auth.uid) {
+      try {
+        const usersSnap = await admin.firestore()
+          .collection("users")
+          .where("uid", "==", request.auth.uid)
+          .limit(1)
+          .get();
+        if (!usersSnap.empty) {
+          await usersSnap.docs[0].ref.update({
+            phone,
+            phoneVerified: true,
+            phoneVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      } catch (e) {
+        logger.error("checkPhoneVerification doc update failed", { uid: request.auth.uid, message: e.message });
+      }
+    }
+    return { approved: true };
+  }
+);
 
 exports.onListingCreate = onDocumentCreated(
   {

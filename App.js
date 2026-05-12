@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { auth, db, storage } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, setDoc, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -260,6 +261,17 @@ function LoginScreen({ navigation, route }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [signupStage, setSignupStage] = useState("form");
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifyError, setVerifyError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   const handleForgotPassword = async () => {
     if (!email) { Alert.alert("Enter Email", "Type your email above first, then tap Forgot Password again."); return; }
@@ -286,7 +298,7 @@ function LoginScreen({ navigation, route }) {
     setLoading(false);
   };
 
-  const handleSignUp = async () => {
+  const handleContinueToVerify = async () => {
     if (!email || !password || !firstName || !lastName || !phone || !zipCode) {
       Alert.alert("Error", "Please fill in all required fields");
       return;
@@ -305,23 +317,104 @@ function LoginScreen({ navigation, route }) {
     }
     setLoading(true);
     try {
+      const send = httpsCallable(getFunctions(), "sendPhoneVerification");
+      await send({ phoneNumber: phone });
+      setSignupStage("verify");
+      setVerifyCode("");
+      setVerifyError("");
+      setResendCooldown(30);
+    } catch (e) {
+      const msg = e?.code === "functions/resource-exhausted"
+        ? "Too many attempts. Please wait a few minutes and try again."
+        : e?.code === "functions/invalid-argument"
+          ? "That phone number doesn't look right. Please check and try again."
+          : "Couldn't send verification code. Check the phone number and try again.";
+      Alert.alert("Error", msg);
+    }
+    setLoading(false);
+  };
+
+  const handleResendCode = async () => {
+    if (resendCooldown > 0 || verifying) return;
+    setVerifyError("");
+    try {
+      const send = httpsCallable(getFunctions(), "sendPhoneVerification");
+      await send({ phoneNumber: phone });
+      setResendCooldown(30);
+    } catch (e) {
+      const msg = e?.code === "functions/resource-exhausted"
+        ? "Too many attempts. Please wait a few minutes and try again."
+        : "Couldn't resend code. Try again in a moment.";
+      setVerifyError(msg);
+    }
+  };
+
+  const handleVerifyAndCreateAccount = async () => {
+    if (!verifyCode || verifyCode.length < 4) {
+      setVerifyError("Enter the code we sent you.");
+      return;
+    }
+    setVerifying(true);
+    setVerifyError("");
+    try {
+      const check = httpsCallable(getFunctions(), "checkPhoneVerification");
+      const result = await check({ phoneNumber: phone, code: verifyCode });
+      if (!result?.data?.approved) {
+        setVerifyError("That code didn't match. Try again or resend.");
+        setVerifying(false);
+        return;
+      }
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       let token = null;
       try { token = await registerForPushNotifications(); } catch (e) {}
       await addDoc(collection(db, "users"), {
         uid: cred.user.uid, email, firstName, lastName, phone, zipCode,
         companyName: companyName || "", role, pushToken: token || "",
+        phoneVerified: true,
         createdAt: serverTimestamp()
       });
       navigation.navigate("MainTabs");
-    } catch (error) { Alert.alert("Error", error.message); }
-    setLoading(false);
+    } catch (e) {
+      const msg = e?.code === "functions/resource-exhausted"
+        ? "Too many attempts. Please wait a few minutes and try again."
+        : (e?.message || "Could not create account. Please try again.");
+      setVerifyError(msg);
+    }
+    setVerifying(false);
   };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <StatusBar style="dark" />
+      {mode === "signup" && signupStage === "verify" ? (
+        <>
+          <Text style={styles.logo}>Verify your phone</Text>
+          <Text style={styles.tagline}>We sent a 6-digit code to {phone}.</Text>
+          <View style={styles.form}>
+            <TextInput
+              style={[styles.input, {fontSize: 22, letterSpacing: 6, textAlign: "center"}]}
+              placeholder="6-digit code"
+              placeholderTextColor="#999999"
+              keyboardType="number-pad"
+              maxLength={6}
+              value={verifyCode}
+              onChangeText={(t) => { setVerifyCode(t.replace(/\D/g, "")); setVerifyError(""); }}
+            />
+            {verifyError ? <Text style={{color: "#c0392b", fontSize: 14, marginTop: -4}}>{verifyError}</Text> : null}
+            <TouchableOpacity style={styles.dealerButton} onPress={handleVerifyAndCreateAccount} disabled={verifying}>
+              <Text style={styles.dealerButtonText}>{verifying ? "Verifying..." : "Verify and create account"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleResendCode} disabled={resendCooldown > 0 || verifying}>
+              <Text style={[styles.backText, (resendCooldown > 0 || verifying) && {color: "#bbb"}]}>{resendCooldown > 0 ? "Resend code (" + resendCooldown + "s)" : "Resend code"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setSignupStage("form"); setVerifyCode(""); setVerifyError(""); }}>
+              <Text style={styles.backText}>Change number</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : (
+        <>
       <Text style={styles.logo}>{mode === "login" ? "Welcome Back" : "Create Account"}</Text>
       <Text style={styles.tagline}>Enter your details to continue</Text>
       <View style={styles.form}>
@@ -373,14 +466,16 @@ function LoginScreen({ navigation, route }) {
             </TouchableOpacity>
           </>
         ) : (
-          <TouchableOpacity style={styles.dealerButton} onPress={handleSignUp}>
-            <Text style={styles.dealerButtonText}>{loading ? "Loading..." : "Create Account"}</Text>
+          <TouchableOpacity style={styles.dealerButton} onPress={handleContinueToVerify} disabled={loading}>
+            <Text style={styles.dealerButtonText}>{loading ? "Sending code..." : "Continue"}</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
       </View>
+        </>
+      )}
     </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -1669,6 +1764,7 @@ function ProfileScreen({ navigation }) {
           setFirstName(data.firstName || "");
           setLastName(data.lastName || "");
           setPhone(data.phone || "");
+          setOrigPhone(data.phone || "");
           setZipCode(data.zipCode || "");
           setCompanyName(data.companyName || "");
           const bp = data.buyingPreferences || {};
@@ -1688,20 +1784,93 @@ function ProfileScreen({ navigation }) {
     fetchProfile();
   }, []);
 
+  const [origPhone, setOrigPhone] = useState("");
+  const [phoneVerifyStage, setPhoneVerifyStage] = useState("none");
+  const [phoneVerifyCode, setPhoneVerifyCode] = useState("");
+  const [phoneVerifyError, setPhoneVerifyError] = useState("");
+  const [phoneVerifying, setPhoneVerifying] = useState(false);
+
+  const saveProfileFields = async () => {
+    if (userData && userData.id) {
+      await updateDoc(doc(db, "users", userData.id), { firstName, lastName, zipCode, companyName, role });
+    } else {
+      const newDoc = await addDoc(collection(db, "users"), {
+        uid: user.uid, email: user.email, firstName, lastName, phone, zipCode, companyName, role,
+        pushToken: "", createdAt: serverTimestamp()
+      });
+      setUserData({ id: newDoc.id, uid: user.uid, firstName, lastName, phone, zipCode, companyName, role });
+    }
+  };
+
   const handleSave = async () => {
     try {
+      if (phone !== origPhone) {
+        setPhoneVerifying(true);
+        try {
+          const send = httpsCallable(getFunctions(), "sendPhoneVerification");
+          await send({ phoneNumber: phone });
+          setPhoneVerifyStage("code");
+          setPhoneVerifyCode("");
+          setPhoneVerifyError("");
+        } catch (e) {
+          const msg = e?.code === "functions/resource-exhausted"
+            ? "Too many attempts. Please wait a few minutes and try again."
+            : e?.code === "functions/invalid-argument"
+              ? "That phone number doesn't look right. Please check and try again."
+              : "Couldn't send verification code. Check the phone number and try again.";
+          Alert.alert("Error", msg);
+        }
+        setPhoneVerifying(false);
+        return;
+      }
+      await saveProfileFields();
       if (userData && userData.id) {
-        await updateDoc(doc(db, "users", userData.id), { firstName, lastName, phone, zipCode, companyName, role });
-      } else {
-        const newDoc = await addDoc(collection(db, "users"), {
-          uid: user.uid, email: user.email, firstName, lastName, phone, zipCode, companyName, role,
-          pushToken: "", createdAt: serverTimestamp()
-        });
-        setUserData({ id: newDoc.id, uid: user.uid, firstName, lastName, phone, zipCode, companyName, role });
+        await updateDoc(doc(db, "users", userData.id), { phone });
       }
       Alert.alert("Success", "Profile updated!");
       setEditing(false);
     } catch(e) { Alert.alert("Error", e.message); }
+  };
+
+  const handleConfirmPhoneVerification = async () => {
+    if (!phoneVerifyCode || phoneVerifyCode.length < 4) {
+      setPhoneVerifyError("Enter the code we sent you.");
+      return;
+    }
+    setPhoneVerifying(true);
+    setPhoneVerifyError("");
+    try {
+      const check = httpsCallable(getFunctions(), "checkPhoneVerification");
+      const result = await check({ phoneNumber: phone, code: phoneVerifyCode });
+      if (!result?.data?.approved) {
+        setPhoneVerifyError("That code didn't match. Try again or resend.");
+        setPhoneVerifying(false);
+        return;
+      }
+      await saveProfileFields();
+      setOrigPhone(phone);
+      setPhoneVerifyStage("none");
+      setPhoneVerifyCode("");
+      Alert.alert("Success", "Profile updated!");
+      setEditing(false);
+    } catch (e) {
+      const msg = e?.code === "functions/resource-exhausted"
+        ? "Too many attempts. Please wait a few minutes and try again."
+        : (e?.message || "Couldn't verify code. Please try again.");
+      setPhoneVerifyError(msg);
+    }
+    setPhoneVerifying(false);
+  };
+
+  const handleResendProfileCode = async () => {
+    if (phoneVerifying) return;
+    setPhoneVerifyError("");
+    try {
+      const send = httpsCallable(getFunctions(), "sendPhoneVerification");
+      await send({ phoneNumber: phone });
+    } catch (e) {
+      setPhoneVerifyError("Couldn't resend code. Try again in a moment.");
+    }
   };
 
   const roleLabel = role === "buyer" ? "Buyer" : role === "seller" ? "Seller" : "Buyer + Seller";
@@ -1838,9 +2007,34 @@ function ProfileScreen({ navigation }) {
                 <Text style={[styles.toggleText, role === "both" && styles.toggleTextActive]}>Both</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.dealerButton} onPress={handleSave}>
-              <Text style={styles.dealerButtonText}>Save Changes</Text>
+            <TouchableOpacity style={styles.dealerButton} onPress={handleSave} disabled={phoneVerifying}>
+              <Text style={styles.dealerButtonText}>{phoneVerifying && phoneVerifyStage === "none" ? "Sending code..." : "Save Changes"}</Text>
             </TouchableOpacity>
+            {phoneVerifyStage === "code" && (
+              <View style={[styles.listingCard, {marginTop: 8, borderColor: "#1B2B5E", borderWidth: 2}]}>
+                <Text style={styles.sectionLabel}>Verify new phone</Text>
+                <Text style={styles.listingDetail}>We sent a 6-digit code to {phone}.</Text>
+                <TextInput
+                  style={[styles.input, {fontSize: 22, letterSpacing: 6, textAlign: "center"}]}
+                  placeholder="6-digit code"
+                  placeholderTextColor="#999999"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  value={phoneVerifyCode}
+                  onChangeText={(t) => { setPhoneVerifyCode(t.replace(/\D/g, "")); setPhoneVerifyError(""); }}
+                />
+                {phoneVerifyError ? <Text style={{color: "#c0392b", fontSize: 14, marginTop: -4}}>{phoneVerifyError}</Text> : null}
+                <TouchableOpacity style={styles.dealerButton} onPress={handleConfirmPhoneVerification} disabled={phoneVerifying}>
+                  <Text style={styles.dealerButtonText}>{phoneVerifying ? "Verifying..." : "Verify and save"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleResendProfileCode} disabled={phoneVerifying}>
+                  <Text style={styles.backText}>Resend code</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { setPhoneVerifyStage("none"); setPhoneVerifyCode(""); setPhoneVerifyError(""); }}>
+                  <Text style={styles.backText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </>
         ) : (
           <>
