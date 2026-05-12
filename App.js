@@ -1306,6 +1306,7 @@ function CreateListingScreen({ navigation }) {
   const [year, setYear] = useState("1990");
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
+  const [modelOther, setModelOther] = useState("");
   const [trim, setTrim] = useState("");
   const [vin, setVin] = useState("");
   const [decodingVin, setDecodingVin] = useState(false);
@@ -1412,12 +1413,14 @@ function CreateListingScreen({ navigation }) {
 
   const handleSubmit = async () => {
     if (!year || !make || !model) { Alert.alert("Error", "Please enter year, make and model"); return; }
+    if (model === "Other" && !modelOther.trim()) { Alert.alert("Error", "Please enter the model name"); return; }
     setLoading(true);
     try {
       const user = auth.currentUser;
       const uploadedPhotos = photos.length > 0 ? await uploadPhotos(photos) : [];
+      const finalModel = model === "Other" ? modelOther.trim() : model;
       const listingData = {
-        year, make, model, trim, vin, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, titleStatus, engineStatus, transStatus, airbags, tires, photos: uploadedPhotos,
+        year, make, model: finalModel, trim, vin, mileage, city, zip, notes, runs, hasKeys, hasTitle, needsTow, damage, titleStatus, engineStatus, transStatus, airbags, tires, photos: uploadedPhotos,
         sellerId: user.uid, sellerEmail: user.email, createdAt: serverTimestamp(), status: "active",
       };
       await addDoc(collection(db, "listings"), listingData);
@@ -1466,7 +1469,7 @@ function CreateListingScreen({ navigation }) {
             </Picker>
           </View>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker key={"make-" + pickerResetKey} selectedValue={make} onValueChange={(val) => { setMake(val); setModel(""); setTrim(""); }} style={styles.picker}>
+            <Picker key={"make-" + pickerResetKey} selectedValue={make} onValueChange={(val) => { setMake(val); setModel(""); setModelOther(""); setTrim(""); }} style={styles.picker}>
               <Picker.Item label="Make" value="" />
               {makes.map(m => <Picker.Item key={m} label={m} value={m} />)}
             </Picker>
@@ -1474,9 +1477,10 @@ function CreateListingScreen({ navigation }) {
         </View>
         <View style={styles.pickerRow}>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker key={"model-" + make + "-" + pickerResetKey} selectedValue={model} onValueChange={(val) => setModel(val)} style={styles.picker} enabled={make !== ""}>
+            <Picker key={"model-" + make + "-" + pickerResetKey} selectedValue={model} onValueChange={(val) => { setModel(val); if (val !== "Other") setModelOther(""); }} style={styles.picker} enabled={make !== ""}>
               <Picker.Item label="Model" value="" />
               {make ? CAR_DATA[make].map(m => <Picker.Item key={m} label={m} value={m} />) : []}
+              {make && !(CAR_DATA[make] || []).includes("Other") ? <Picker.Item key="__other__" label="Other" value="Other" /> : null}
             </Picker>
           </View>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
@@ -1486,6 +1490,9 @@ function CreateListingScreen({ navigation }) {
             </Picker>
           </View>
         </View>
+        {model === "Other" && (
+          <TextInput style={styles.input} placeholder="e.g. Econoline" placeholderTextColor="#999999" autoCapitalize="words" value={modelOther} onChangeText={setModelOther} />
+        )}
         <TextInput style={styles.input} placeholder="Mileage" placeholderTextColor="#999999" keyboardType="numeric" value={mileage} onChangeText={setMileage} />
         <Text style={styles.sectionLabel}>Location</Text>
         <View style={{flexDirection: "row", gap: 8}}>
@@ -1599,7 +1606,7 @@ function CreateListingScreen({ navigation }) {
             </View>
           ))}
         </View>
-        <TouchableOpacity style={styles.sellerButton} onPress={handleSubmit}>
+        <TouchableOpacity style={[styles.sellerButton, (model === "Other" && !modelOther.trim()) && {opacity: 0.5}]} onPress={handleSubmit} disabled={loading || (model === "Other" && !modelOther.trim())}>
           <Text style={styles.sellerButtonText}>{loading ? "Saving..." : "Submit Listing"}</Text>
         </TouchableOpacity>
       </View>
