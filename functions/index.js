@@ -1,4 +1,4 @@
-// Deployed: 2026-05-10 — skip role:seller from SMS fanout
+// Deployed: 2026-05-13 — rebind to TWILIO_VERIFY_SERVICE_SID v2
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
@@ -14,11 +14,15 @@ const TWILIO_API_KEY_SECRET = defineSecret("TWILIO_API_KEY_SECRET");
 const TWILIO_FROM_NUMBER = defineSecret("TWILIO_FROM_NUMBER");
 const TWILIO_VERIFY_SERVICE_SID = defineSecret("TWILIO_VERIFY_SERVICE_SID");
 
+function trimmed(secret) {
+  return (secret.value() || "").trim();
+}
+
 function twilioClient() {
   return twilio(
-    TWILIO_API_KEY_SID.value(),
-    TWILIO_API_KEY_SECRET.value(),
-    { accountSid: TWILIO_ACCOUNT_SID.value() }
+    trimmed(TWILIO_API_KEY_SID),
+    trimmed(TWILIO_API_KEY_SECRET),
+    { accountSid: trimmed(TWILIO_ACCOUNT_SID) }
   );
 }
 
@@ -33,7 +37,7 @@ exports.sendPhoneVerification = onCall(
     }
     try {
       const verification = await twilioClient().verify.v2
-        .services(TWILIO_VERIFY_SERVICE_SID.value())
+        .services(trimmed(TWILIO_VERIFY_SERVICE_SID))
         .verifications.create({ to: phone, channel: "sms" });
       return { success: true, status: verification.status };
     } catch (e) {
@@ -62,7 +66,7 @@ exports.checkPhoneVerification = onCall(
     let check;
     try {
       check = await twilioClient().verify.v2
-        .services(TWILIO_VERIFY_SERVICE_SID.value())
+        .services(trimmed(TWILIO_VERIFY_SERVICE_SID))
         .verificationChecks.create({ to: phone, code });
     } catch (e) {
       logger.error("checkPhoneVerification failed", { phone, code: e.code, message: e.message });
@@ -111,7 +115,7 @@ exports.onListingCreate = onDocumentCreated(
       TWILIO_API_KEY_SECRET.value(),
       { accountSid: TWILIO_ACCOUNT_SID.value() }
     );
-    const fromNumber = TWILIO_FROM_NUMBER.value();
+    const fromNumber = trimmed(TWILIO_FROM_NUMBER);
 
     const usersSnap = await admin.firestore().collection("users").get();
     const zipCache = {};
