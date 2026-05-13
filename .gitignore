@@ -39,6 +39,7 @@ yarn-error.*
 .claude/projects/
 .claude/skills/
 .agents/
+skills-lock.json
 
 # Firebase Functions
 functions/node_modules/
