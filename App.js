@@ -99,6 +99,97 @@ const TRIM_DATA = {
   "Other": ["Base", "Limited", "Premium", "Sport", "Standard", "Other"]
 };
 
+const MODEL_TRIM_DATA = {
+  "Dodge|Charger": ["Base", "GT", "GT Plus", "Pursuit", "R/T", "R/T Plus", "R/T Scat Pack", "R/T Scat Pack Widebody", "SE", "SRT 392", "SRT Hellcat", "SRT Hellcat Widebody", "SXT", "SXT Plus", "Other"],
+  "Dodge|Challenger": ["Base", "GT", "R/T", "R/T Scat Pack", "R/T Scat Pack Widebody", "SE", "SRT 392", "SRT Demon", "SRT Hellcat", "SRT Hellcat Redeye", "SRT Hellcat Widebody", "SXT", "T/A", "Other"],
+  "Dodge|Durango": ["Citadel", "GT", "Limited", "R/T", "R/T 392", "SRT 392", "SRT Hellcat", "SXT", "Other"],
+  "Dodge|Ram 1500": ["Big Horn", "Laramie", "Laramie Longhorn", "Limited", "Lone Star", "Outdoorsman", "Rebel", "ST", "SXT", "Tradesman", "TRX", "Other"],
+  "Dodge|Ram 2500": ["Big Horn", "Laramie", "Laramie Longhorn", "Limited", "Lone Star", "Outdoorsman", "Power Wagon", "ST", "SXT", "Tradesman", "Other"],
+  "Dodge|Ram 3500": ["Big Horn", "Laramie", "Laramie Longhorn", "Limited", "Lone Star", "Outdoorsman", "Power Wagon", "ST", "SXT", "Tradesman", "Other"],
+  "Dodge|Dakota": ["Base", "Big Horn", "Laramie", "R/T", "SLT", "Sport", "ST", "TRX", "Other"],
+  "Dodge|Viper": ["ACR", "ACR-X", "GTC", "GTS", "RT/10", "SRT", "SRT-10", "TA", "Other"],
+  "Dodge|Magnum": ["Base", "R/T", "SE", "SRT8", "SXT", "Other"],
+  "Dodge|Neon": ["ACR", "Base", "ES", "Highline", "R/T", "SE", "Sport", "SRT-4", "SXT", "Other"],
+  "Dodge|Caliber": ["Heat", "R/T", "Rush", "SE", "SRT4", "SXT", "Uptown", "Other"],
+  "Dodge|Grand Caravan": ["AVP", "Crew", "GT", "SE", "SE Plus", "SXT", "Other"],
+  "Dodge|Journey": ["AVP", "Crossroad", "GT", "R/T", "SE", "SXT", "Other"],
+  "Dodge|Avenger": ["Base", "R/T", "SE", "SXT", "Other"],
+  "Dodge|Stratus": ["ES", "R/T", "SE", "SXT", "Other"],
+  "Dodge|Intrepid": ["Base", "ES", "R/T", "SE", "SXT", "Other"],
+  "Dodge|Hornet": ["GT", "GT Plus", "R/T", "R/T Plus", "Other"],
+
+  "Ford|Mustang": ["Base", "Bullitt", "Cobra", "EcoBoost", "EcoBoost Premium", "GT", "GT Premium", "Mach 1", "Premium", "Shelby GT350", "Shelby GT500", "V6", "Other"],
+  "Ford|F-150": ["FX4", "King Ranch", "Lariat", "Lightning", "Limited", "Platinum", "Raptor", "STX", "Tremor", "XL", "XLT", "Other"],
+  "Ford|F-250": ["King Ranch", "Lariat", "Limited", "Platinum", "Tremor", "XL", "XLT", "Other"],
+  "Ford|F-350": ["King Ranch", "Lariat", "Limited", "Platinum", "Tremor", "XL", "XLT", "Other"],
+  "Ford|Ranger": ["FX2", "FX4", "Lariat", "Raptor", "STX", "Tremor", "XL", "XLT", "Other"],
+  "Ford|Bronco": ["Badlands", "Base", "Big Bend", "Black Diamond", "Heritage", "Heritage Limited", "Outer Banks", "Raptor", "Wildtrak", "Other"],
+  "Ford|Bronco Sport": ["Badlands", "Base", "Big Bend", "Free Wheeling", "Heritage", "Heritage Limited", "Outer Banks", "Other"],
+  "Ford|Explorer": ["Base", "Limited", "Platinum", "ST", "ST-Line", "Timberline", "XLT", "Other"],
+  "Ford|Escape": ["Active", "PHEV", "Platinum", "S", "SE", "SEL", "ST-Line", "Titanium", "Other"],
+  "Ford|Fusion": ["S", "SE", "SEL", "Sport", "Titanium", "Other"],
+  "Ford|Edge": ["SE", "SEL", "ST", "ST-Line", "Titanium", "Other"],
+  "Ford|Maverick": ["Lariat", "Tremor", "XL", "XLT", "Other"],
+  "Ford|Crown Victoria": ["LX", "LX Sport", "Police Interceptor", "S", "Other"],
+  "Ford|Focus": ["Electric", "RS", "S", "SE", "SEL", "ST", "Titanium", "Other"],
+  "Ford|Fiesta": ["S", "SE", "ST", "ST-Line", "Titanium", "Other"],
+
+  "Chevrolet|Camaro": ["1LS", "1LT", "1SS", "2LT", "2SS", "3LT", "LT1", "Z/28", "ZL1", "Other"],
+  "Chevrolet|Corvette": ["1LT", "2LT", "3LT", "Base", "E-Ray", "Grand Sport", "Stingray", "Z06", "ZR1", "Other"],
+  "Chevrolet|Silverado": ["Custom", "Custom Trail Boss", "High Country", "LT", "LT Trail Boss", "LTZ", "RST", "Work Truck", "ZR2", "Other"],
+  "Chevrolet|Colorado": ["LT", "Trail Boss", "Work Truck", "Z71", "ZR2", "Other"],
+  "Chevrolet|Tahoe": ["High Country", "LS", "LT", "Premier", "RST", "Z71", "Other"],
+  "Chevrolet|Suburban": ["High Country", "LS", "LT", "Premier", "RST", "Z71", "Other"],
+  "Chevrolet|Malibu": ["1FL", "LS", "LT", "Premier", "RS", "Other"],
+  "Chevrolet|Equinox": ["LS", "LT", "Premier", "RS", "Other"],
+  "Chevrolet|Traverse": ["High Country", "LS", "LT", "Premier", "RS", "Other"],
+
+  "GMC|Sierra": ["AT4", "AT4X", "Base", "Denali", "Denali Ultimate", "Elevation", "Pro", "SLE", "SLT", "Other"],
+  "GMC|Canyon": ["AT4", "AT4X", "Denali", "Elevation", "Pro", "SLE", "SLT", "Other"],
+  "GMC|Yukon": ["AT4", "Denali", "Denali Ultimate", "SLE", "SLT", "Other"],
+  "GMC|Terrain": ["AT4", "Denali", "SLE", "SLT", "Other"],
+
+  "Toyota|Tacoma": ["Limited", "PreRunner", "SR", "SR5", "TRD Off-Road", "TRD Pro", "TRD Sport", "Trailhunter", "Other"],
+  "Toyota|Tundra": ["1794 Edition", "Capstone", "Limited", "Platinum", "SR", "SR5", "TRD Pro", "Other"],
+  "Toyota|4Runner": ["Limited", "Nightshade", "SR5", "SR5 Premium", "TRD Off-Road", "TRD Off-Road Premium", "TRD Pro", "TRD Sport", "Trailhunter", "Other"],
+  "Toyota|Camry": ["LE", "Nightshade", "SE", "TRD", "XLE", "XSE", "Other"],
+  "Toyota|Corolla": ["Hybrid", "L", "LE", "Nightshade", "SE", "XLE", "XSE", "Other"],
+  "Toyota|RAV4": ["Adventure", "Limited", "Hybrid LE", "Hybrid XLE", "Hybrid XSE", "LE", "Prime SE", "Prime XSE", "TRD Off-Road", "Woodland Edition", "XLE", "XLE Premium", "Other"],
+  "Toyota|Highlander": ["Bronze Edition", "Hybrid Limited", "Hybrid Platinum", "L", "LE", "Limited", "Platinum", "XLE", "Other"],
+  "Toyota|Sienna": ["LE", "Limited", "Platinum", "Woodland Edition", "XLE", "XSE", "Other"],
+
+  "Honda|Civic": ["EX", "EX-L", "LX", "Si", "Sport", "Sport Touring Hybrid", "Touring", "Type R", "Other"],
+  "Honda|Accord": ["EX", "EX-L", "Hybrid EX-L", "LX", "Sport", "Sport-L", "Sport-L Hybrid", "Touring", "Touring Hybrid", "Other"],
+  "Honda|CR-V": ["EX", "EX-L", "LX", "Sport", "Sport-L Hybrid", "Sport Touring Hybrid", "Touring", "Other"],
+  "Honda|Pilot": ["Black Edition", "EX-L", "Elite", "Sport", "Touring", "TrailSport", "Other"],
+  "Honda|Ridgeline": ["Black Edition", "RTL", "RTL-E", "Sport", "TrailSport", "Other"],
+  "Honda|Odyssey": ["Elite", "EX", "EX-L", "LX", "Sport", "Touring", "Other"],
+
+  "Nissan|Titan": ["Platinum Reserve", "PRO-4X", "S", "SL", "SV", "Other"],
+  "Nissan|Frontier": ["PRO-4X", "PRO-X", "S", "SL", "SV", "Other"],
+  "Nissan|Altima": ["Platinum", "S", "SL", "SR", "SV", "Other"],
+  "Nissan|Maxima": ["Platinum", "S", "SL", "SR", "SV", "Other"],
+  "Nissan|Rogue": ["Platinum", "S", "SL", "SV", "Other"],
+  "Nissan|Pathfinder": ["Platinum", "Rock Creek", "S", "SL", "SV", "Other"],
+
+  "Jeep|Wrangler": ["High Tide", "Rubicon", "Rubicon 392", "Rubicon X", "Sahara", "Sport", "Sport S", "Willys", "Willys Sport", "Other"],
+  "Jeep|Grand Cherokee": ["4xe", "Altitude", "Laredo", "Limited", "Overland", "Summit", "Summit Reserve", "Trailhawk", "Other"],
+  "Jeep|Grand Cherokee L": ["Altitude", "Laredo", "Limited", "Overland", "Summit", "Summit Reserve", "Other"],
+  "Jeep|Gladiator": ["High Altitude", "Mojave", "Rubicon", "Sport", "Sport S", "Willys", "Other"],
+  "Jeep|Cherokee": ["80th Anniversary", "Altitude", "High Altitude", "Latitude", "Latitude Lux", "Limited", "Trailhawk", "Other"],
+  "Jeep|Compass": ["Altitude", "High Altitude", "Latitude", "Latitude Lux", "Limited", "Sport", "Trailhawk", "Other"],
+  "Jeep|Renegade": ["Altitude", "High Altitude", "Latitude", "Limited", "Sport", "Trailhawk", "Other"],
+  "Jeep|Wagoneer": ["Base", "Carbide", "Series I", "Series II", "Series III", "Other"],
+  "Jeep|Grand Wagoneer": ["Obsidian", "Series I", "Series II", "Series III", "Other"],
+};
+
+function trimsFor(make, model) {
+  if (!make) return [];
+  const specific = MODEL_TRIM_DATA[make + "|" + model];
+  if (specific) return specific;
+  return TRIM_DATA[make] || TRIM_DATA["Other"];
+}
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
@@ -1572,16 +1663,16 @@ function CreateListingScreen({ navigation }) {
         </View>
         <View style={styles.pickerRow}>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker key={"model-" + make + "-" + pickerResetKey} selectedValue={model} onValueChange={(val) => { setModel(val); if (val !== "Other") setModelOther(""); }} style={styles.picker} enabled={make !== ""}>
+            <Picker key={"model-" + make + "-" + pickerResetKey} selectedValue={model} onValueChange={(val) => { setModel(val); if (val !== "Other") setModelOther(""); setTrim(""); }} style={styles.picker} enabled={make !== ""}>
               <Picker.Item label="Model" value="" />
               {make ? CAR_DATA[make].map(m => <Picker.Item key={m} label={m} value={m} />) : []}
               {make && !(CAR_DATA[make] || []).includes("Other") ? <Picker.Item key="__other__" label="Other" value="Other" /> : null}
             </Picker>
           </View>
           <View style={[styles.pickerContainer, styles.pickerHalf]}>
-            <Picker key={"trim-" + make + "-" + pickerResetKey} selectedValue={trim} onValueChange={(val) => setTrim(val)} style={styles.picker}>
+            <Picker key={"trim-" + make + "-" + model + "-" + pickerResetKey} selectedValue={trim} onValueChange={(val) => setTrim(val)} style={styles.picker} enabled={make !== ""}>
               <Picker.Item label="Trim" value="" />
-              {(make && TRIM_DATA[make] ? TRIM_DATA[make] : ["Base", "Sport", "Limited", "Premium", "Other"]).map(t => <Picker.Item key={t} label={t} value={t} />)}
+              {trimsFor(make, model).map(t => <Picker.Item key={t} label={t} value={t} />)}
             </Picker>
           </View>
         </View>
