@@ -1,4 +1,4 @@
-// Deployed: 2026-05-13 — rebind to TWILIO_VERIFY_SERVICE_SID v2
+// Deployed: 2026-05-15 — rebind to TWILIO_API_KEY_SID/SECRET v2
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
