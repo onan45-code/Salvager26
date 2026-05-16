@@ -676,7 +676,9 @@ function HomeScreen({ navigation }) {
         const listingsSnap = await getDocs(collection(db, "listings"));
         const allListings = listingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const listingByIdAll = Object.fromEntries(allListings.map(l => [l.id, l]));
-        const listings = allListings.filter(l => l.status !== "sold" && l.status !== "deleted");
+        const listings = allListings.filter(l => l.sellerId !== user.uid && l.status !== "sold" && l.status !== "deleted");
+        const filteredOwnCount = allListings.filter(l => l.sellerId === user.uid && l.status !== "sold" && l.status !== "deleted").length;
+        if (filteredOwnCount > 0) console.log("[HomeScreen] hid " + filteredOwnCount + " own listing(s) from buy-side feed");
 
         const myListings = allListings.filter(l => l.sellerId === user.uid);
         setActiveCount(myListings.filter(l => l.status !== "sold" && l.status !== "deleted").length);
@@ -1365,6 +1367,11 @@ function PlaceBidScreen({ route, navigation }) {
     const checkExisting = async () => {
       try {
         const user = auth.currentUser;
+        if (listing.sellerId === user.uid) {
+          Alert.alert("Your listing", "You can't bid on your own listing.");
+          navigation.replace("SellerBids", { listing });
+          return;
+        }
         const snap = await getDocs(query(collection(db, "bids"), where("listingId", "==", listing.id), where("buyerId", "==", user.uid)));
         if (!snap.empty) {
           navigation.replace("MyBid", { listing });
