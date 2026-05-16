@@ -2771,7 +2771,7 @@ const styles = StyleSheet.create({
   acceptButton: { backgroundColor: "#27AE60", padding: 12, borderRadius: 8, alignItems: "center", marginTop: 12 },
   acceptedButton: { backgroundColor: "#888888" },
   acceptButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "bold" },
-  pickerContainer: { backgroundColor: "#ffffff", borderRadius: 12, marginBottom: 4, height: 58, overflow: "hidden", justifyContent: "center", borderWidth: 1, borderColor: "#dddddd" },
+  pickerContainer: { backgroundColor: "#ffffff", borderRadius: 12, marginBottom: 4, height: 64, overflow: "hidden", justifyContent: "center", paddingHorizontal: 8, borderWidth: 1, borderColor: "#dddddd" },
   pickerRow: { flexDirection: "row", gap: 8 },
   pickerHalf: { flex: 1 },
   picker: { color: "#000000" },
