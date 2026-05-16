@@ -2087,11 +2087,20 @@ function ProfileScreen({ navigation }) {
         {editing ? (
           <>
             <View style={{flexDirection: "row", gap: 8}}>
-              <TextInput style={[styles.input, {flex: 1}]} placeholder="First Name" placeholderTextColor="#999999" value={firstName} onChangeText={setFirstName} />
-              <TextInput style={[styles.input, {flex: 1}]} placeholder="Last Name" placeholderTextColor="#999999" value={lastName} onChangeText={setLastName} />
+              <View style={{flex: 1}}>
+                <Text style={styles.fieldLabel}>First Name</Text>
+                <TextInput style={styles.input} placeholder="First Name" placeholderTextColor="#999999" value={firstName} onChangeText={setFirstName} />
+              </View>
+              <View style={{flex: 1}}>
+                <Text style={styles.fieldLabel}>Last Name</Text>
+                <TextInput style={styles.input} placeholder="Last Name" placeholderTextColor="#999999" value={lastName} onChangeText={setLastName} />
+              </View>
             </View>
-            <TextInput style={styles.input} placeholder="Phone" placeholderTextColor="#999999" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
+            <Text style={styles.fieldLabel}>Phone Number</Text>
+            <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor="#999999" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
+            <Text style={styles.fieldLabel}>ZIP Code</Text>
             <TextInput style={styles.input} placeholder="ZIP Code" placeholderTextColor="#999999" keyboardType="numeric" value={zipCode} onChangeText={setZipCode} />
+            <Text style={styles.fieldLabel}>Company Name (optional)</Text>
             <TextInput style={styles.input} placeholder="Company Name (optional)" placeholderTextColor="#999999" value={companyName} onChangeText={setCompanyName} />
             <Text style={styles.sectionLabel}>I want to</Text>
             <View style={styles.toggleRow}>
@@ -2751,6 +2760,7 @@ const styles = StyleSheet.create({
   emptyStateText: { color: "#1a1a1a", fontSize: 18, fontWeight: "bold", marginBottom: 8 },
   emptyStateSubtext: { color: "#555555", fontSize: 14 },
   sectionLabel: { color: "#1B2B5E", fontSize: 14, fontWeight: "bold", marginTop: 8, textTransform: "uppercase" },
+  fieldLabel: { color: "#666666", fontSize: 13, fontWeight: "500", marginTop: 6, marginBottom: 4 },
   statsRow: { flexDirection: "row", gap: 16, marginBottom: 24 },
   statCard: { flex: 1, backgroundColor: "#ffffff", borderRadius: 16, padding: 12, alignItems: "flex-start", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3, borderWidth: 1, borderColor: "#eeeeee" },
   statTopRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
