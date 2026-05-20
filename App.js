@@ -1356,7 +1356,6 @@ function BrowseCarsScreen({ navigation }) {
 function PlaceBidScreen({ route, navigation }) {
   const { listing } = route.params;
   const [amount, setAmount] = useState("");
-  const [towingIncluded, setTowingIncluded] = useState(listing.needsTow === true);
   const [pickupTime, setPickupTime] = useState("");
   const [note, setNote] = useState("");
   const [internalNote, setInternalNote] = useState("");
@@ -1407,7 +1406,7 @@ function PlaceBidScreen({ route, navigation }) {
       const bidId = listing.id + "_" + user.uid;
       await setDoc(doc(db, "bids", bidId), {
         listingId: listing.id, buyerId: user.uid, buyerEmail: user.email,
-        amount: parseFloat(amount), towingIncluded, pickupTime, note, internalNote, status: "pending", createdAt: serverTimestamp(),
+        amount: parseFloat(amount), towingIncluded: listing.needsTow === true, pickupTime, note, internalNote, status: "pending", createdAt: serverTimestamp(),
       });
       Alert.alert("Success", "Your bid has been placed!");
       try {
@@ -1476,12 +1475,6 @@ function PlaceBidScreen({ route, navigation }) {
             <Text style={[styles.toggleText, pickupTime === "afternoon" && styles.toggleTextActive]}>Afternoon</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={towingIncluded ? styles.towingToggleIn : styles.towingToggleOut} onPress={() => setTowingIncluded(!towingIncluded)} disabled={listing.needsTow === true}>
-          <Text style={styles.towingToggleText}>{towingIncluded ? "Towing Included" : "Towing NOT Included"}</Text>
-        </TouchableOpacity>
-        {listing.needsTow === true && (
-          <Text style={styles.towingLockedNote}>This vehicle requires towing — towing must be included in your bid</Text>
-        )}
         <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
         <TextInput style={styles.input} placeholder="Private note for yourself (optional)" placeholderTextColor="#999999" value={internalNote} onChangeText={setInternalNote} />
         <TouchableOpacity style={styles.dealerButton} onPress={handleSubmitBid} disabled={loading}>
@@ -2245,7 +2238,6 @@ function MyBidScreen({ route, navigation }) {
   const [myBid, setMyBid] = useState(null);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState("");
-  const [towingIncluded, setTowingIncluded] = useState(listing.needsTow === true);
   const [pickupTime, setPickupTime] = useState("");
   const [note, setNote] = useState("");
   const [internalNote, setInternalNote] = useState("");
@@ -2261,7 +2253,6 @@ function MyBidScreen({ route, navigation }) {
           const bidData = { id: snap.docs[0].id, ...snap.docs[0].data() };
           setMyBid(bidData);
           setAmount(bidData.amount.toString());
-          setTowingIncluded(listing.needsTow === true ? true : (bidData.towingIncluded || false));
           setPickupTime(bidData.pickupTime || "");
           setNote(bidData.note || "");
           setInternalNote(bidData.internalNote || "");
@@ -2356,7 +2347,7 @@ function MyBidScreen({ route, navigation }) {
     }
     setSubmitting(true);
     try {
-      await updateDoc(doc(db, "bids", myBid.id), { amount: parseFloat(amount), towingIncluded, pickupTime, note, internalNote });
+      await updateDoc(doc(db, "bids", myBid.id), { amount: parseFloat(amount), pickupTime, note, internalNote });
       Alert.alert("Success", "Your bid has been updated!");
       navigation.goBack();
     } catch(e) { Alert.alert("Error", e.message); }
@@ -2447,12 +2438,6 @@ function MyBidScreen({ route, navigation }) {
               <Text style={[styles.toggleText, pickupTime === "afternoon" && styles.toggleTextActive]}>Afternoon</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity style={towingIncluded ? styles.towingToggleIn : styles.towingToggleOut} onPress={() => setTowingIncluded(!towingIncluded)} disabled={listing.needsTow === true}>
-            <Text style={styles.towingToggleText}>{towingIncluded ? "Towing Included" : "Towing NOT Included"}</Text>
-          </TouchableOpacity>
-          {listing.needsTow === true && (
-            <Text style={styles.towingLockedNote}>This vehicle requires towing — towing must be included in your bid</Text>
-          )}
           <Text style={styles.sectionLabel}>Message to Seller</Text>
           <TextInput style={styles.input} placeholder="Note to seller (optional)" placeholderTextColor="#999999" value={note} onChangeText={setNote} />
           <TextInput style={styles.input} placeholder="Private note for yourself (optional)" placeholderTextColor="#999999" value={internalNote} onChangeText={setInternalNote} />
