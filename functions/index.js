@@ -1,5 +1,4 @@
-// Deployed: 2026-05-15 — rebind to TWILIO_API_KEY_SID/SECRET v2
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const { logger } = require("firebase-functions");
@@ -8,22 +7,39 @@ const twilio = require("twilio");
 
 admin.initializeApp();
 
+// Twilio API Key auth — used by phone OTP verification only
 const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 const TWILIO_API_KEY_SID = defineSecret("TWILIO_API_KEY_SID");
 const TWILIO_API_KEY_SECRET = defineSecret("TWILIO_API_KEY_SECRET");
-const TWILIO_FROM_NUMBER = defineSecret("TWILIO_FROM_NUMBER");
 const TWILIO_VERIFY_SERVICE_SID = defineSecret("TWILIO_VERIFY_SERVICE_SID");
+
+// Twilio Auth Token — used for SMS notifications
+const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
+const TWILIO_FROM_NUMBER = defineSecret("TWILIO_FROM_NUMBER");
 
 function trimmed(secret) {
   return (secret.value() || "").trim();
 }
 
-function twilioClient() {
+function verifyClient() {
   return twilio(
     trimmed(TWILIO_API_KEY_SID),
     trimmed(TWILIO_API_KEY_SECRET),
     { accountSid: trimmed(TWILIO_ACCOUNT_SID) }
   );
+}
+
+async function sendSms(phone, message) {
+  const to = normalizePhone(phone);
+  if (!to) return false;
+  try {
+    const client = twilio(trimmed(TWILIO_ACCOUNT_SID), trimmed(TWILIO_AUTH_TOKEN));
+    await client.messages.create({ from: trimmed(TWILIO_FROM_NUMBER), to, body: message });
+    return true;
+  } catch (e) {
+    logger.error("Twilio SMS failed", { to, error: e.message });
+    return false;
+  }
 }
 
 exports.sendPhoneVerification = onCall(
@@ -36,7 +52,7 @@ exports.sendPhoneVerification = onCall(
       throw new HttpsError("invalid-argument", "Invalid phone number format");
     }
     try {
-      const verification = await twilioClient().verify.v2
+      const verification = await verifyClient().verify.v2
         .services(trimmed(TWILIO_VERIFY_SERVICE_SID))
         .verifications.create({ to: phone, channel: "sms" });
       return { success: true, status: verification.status };
@@ -65,7 +81,7 @@ exports.checkPhoneVerification = onCall(
     }
     let check;
     try {
-      check = await twilioClient().verify.v2
+      check = await verifyClient().verify.v2
         .services(trimmed(TWILIO_VERIFY_SERVICE_SID))
         .verificationChecks.create({ to: phone, code });
     } catch (e) {
@@ -100,22 +116,16 @@ exports.checkPhoneVerification = onCall(
   }
 );
 
+// New listing created → SMS fanout to buyers whose preferences match
 exports.onListingCreate = onDocumentCreated(
   {
     document: "listings/{listingId}",
-    secrets: [TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_FROM_NUMBER],
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER],
   },
   async (event) => {
     const listing = event.data?.data();
     if (!listing) return;
     if (listing.status === "deleted") return;
-
-    const client = twilio(
-      TWILIO_API_KEY_SID.value(),
-      TWILIO_API_KEY_SECRET.value(),
-      { accountSid: TWILIO_ACCOUNT_SID.value() }
-    );
-    const fromNumber = trimmed(TWILIO_FROM_NUMBER);
 
     const usersSnap = await admin.firestore().collection("users").get();
     const zipCache = {};
@@ -130,9 +140,7 @@ exports.onListingCreate = onDocumentCreated(
       if (u.uid === listing.sellerId) { skipped++; continue; }
       if (u.role === "seller") { skipped++; continue; }
       if (!u.smsNotifications) { skipped++; continue; }
-
-      const phone = normalizePhone(u.phone);
-      if (!phone) { skipped++; continue; }
+      if (!u.phone) { skipped++; continue; }
 
       const prefs = u.buyingPreferences;
       if (!prefs || !prefs.zip) { skipped++; continue; }
@@ -152,22 +160,78 @@ exports.onListingCreate = onDocumentCreated(
         if (haversineMiles(userCoords, listingCoords) > radius) { skipped++; continue; }
       }
 
-      const body = `New on Salvager: ${listing.year} ${listing.make} ${listing.model}${listing.city ? " in " + listing.city : ""}. Open the app to see details.`;
-
-      try {
-        await client.messages.create({ from: fromNumber, to: phone, body });
-        sent++;
-      } catch (e) {
-        logger.error("Twilio send failed", { phone, error: e.message });
-        skipped++;
-      }
+      const message = `New on Salvager: ${listing.year} ${listing.make} ${listing.model}${listing.city ? " in " + listing.city : ""}. Open the app to see details.`;
+      const ok = await sendSms(u.phone, message);
+      if (ok) sent++; else skipped++;
     }
 
-    logger.info("Listing notification fanout", {
-      listingId: event.params.listingId,
-      sent,
-      skipped,
-    });
+    logger.info("Listing notification fanout", { listingId: event.params.listingId, sent, skipped });
+  }
+);
+
+// Bid placed → SMS to seller
+exports.onBidCreate = onDocumentCreated(
+  {
+    document: "bids/{bidId}",
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER],
+  },
+  async (event) => {
+    const bid = event.data?.data();
+    if (!bid) return;
+
+    try {
+      const listingDoc = await admin.firestore().collection("listings").doc(bid.listingId).get();
+      if (!listingDoc.exists) return;
+      const listing = listingDoc.data();
+
+      const sellerSnap = await admin.firestore().collection("users")
+        .where("uid", "==", listing.sellerId).limit(1).get();
+      if (sellerSnap.empty) return;
+      const seller = sellerSnap.docs[0].data();
+      if (!seller.phone) return;
+
+      const message = `New bid on Salvager! $${bid.amount} offered for your ${listing.year} ${listing.make} ${listing.model}. Open the app to review.`;
+      await sendSms(seller.phone, message);
+
+      logger.info("Bid placed SMS sent", { bidId: event.params.bidId, sellerUid: listing.sellerId });
+    } catch (e) {
+      logger.error("onBidCreate error", { error: e.message });
+    }
+  }
+);
+
+// Bid accepted → SMS to buyer
+exports.onBidUpdate = onDocumentUpdated(
+  {
+    document: "bids/{bidId}",
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER],
+  },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after) return;
+    if (before.status === "accepted" || after.status !== "accepted") return;
+
+    try {
+      const listingDoc = await admin.firestore().collection("listings").doc(after.listingId).get();
+      const listing = listingDoc.exists ? listingDoc.data() : {};
+
+      const buyerSnap = await admin.firestore().collection("users")
+        .where("uid", "==", after.buyerId).limit(1).get();
+      if (buyerSnap.empty) return;
+      const buyer = buyerSnap.docs[0].data();
+      if (!buyer.phone) return;
+
+      const vehicle = listing.year && listing.make
+        ? `${listing.year} ${listing.make} ${listing.model}`
+        : "the vehicle";
+      const message = `Your $${after.amount} bid on Salvager was accepted! Open the app for seller contact info on the ${vehicle}.`;
+      await sendSms(buyer.phone, message);
+
+      logger.info("Bid accepted SMS sent", { bidId: event.params.bidId, buyerUid: after.buyerId });
+    } catch (e) {
+      logger.error("onBidUpdate error", { error: e.message });
+    }
   }
 );
 
