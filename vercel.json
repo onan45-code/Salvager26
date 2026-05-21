@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx expo export --platform web",
+  "buildCommand": "npx expo export --platform web && cp public/sms-opt-in.html dist/sms-opt-in.html",
   "outputDirectory": "dist",
   "framework": null,
   "routes": [
