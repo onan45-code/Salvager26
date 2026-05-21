@@ -1,5 +1,8 @@
 {
   "buildCommand": "npx expo export --platform web",
   "outputDirectory": "dist",
-  "framework": null
+  "framework": null,
+  "routes": [
+    { "src": "/sms-opt-in", "dest": "/sms-opt-in.html" }
+  ]
 }
