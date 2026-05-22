@@ -1390,12 +1390,29 @@ function PlaceBidScreen({ route, navigation }) {
     );
   }
 
+  if (listing.sellerId === auth.currentUser?.uid) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.emptyStateText}>This is your listing</Text>
+        <Text style={styles.emptyStateSubtext}>You can't bid on a car you're selling.</Text>
+        <TouchableOpacity style={[styles.dealerButton, {marginTop: 16}]} onPress={() => navigation.replace("SellerBids", { listing })}>
+          <Text style={styles.dealerButtonText}>View as seller</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   const handleSubmitBid = async () => {
     if (loading) return;
+    const user = auth.currentUser;
+    if (listing.sellerId === user?.uid) {
+      Alert.alert("Your listing", "You can't bid on your own listing.");
+      navigation.replace("SellerBids", { listing });
+      return;
+    }
     if (!amount) { Alert.alert("Error", "Please enter a bid amount"); return; }
     setLoading(true);
     try {
-      const user = auth.currentUser;
       const dupSnap = await getDocs(query(collection(db, "bids"), where("listingId", "==", listing.id), where("buyerId", "==", user.uid)));
       if (!dupSnap.empty) {
         setLoading(false);
