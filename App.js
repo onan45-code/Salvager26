@@ -1366,6 +1366,18 @@ function PlaceBidScreen({ route, navigation }) {
     const checkExisting = async () => {
       try {
         const user = auth.currentUser;
+        try {
+          await addDoc(collection(db, "debugAudit"), {
+            event: "placeBid_mount",
+            authUid: user?.uid || null,
+            authEmail: user?.email || null,
+            listingId: listing?.id || null,
+            listingSellerId: listing?.sellerId || null,
+            listingSellerEmail: listing?.sellerEmail || null,
+            sellerIdMatchesAuthUid: user?.uid && listing?.sellerId ? listing.sellerId === user.uid : null,
+            ts: serverTimestamp(),
+          });
+        } catch(_) {}
         if (listing.sellerId === user.uid) {
           Alert.alert("Your listing", "You can't bid on your own listing.");
           navigation.replace("SellerBids", { listing });
