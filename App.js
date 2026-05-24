@@ -324,7 +324,7 @@ function WelcomeScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <Image source={require("./assets/logo.png")} style={{width: 280, height: 280, resizeMode: "contain"}} />
+        <Image source={require("./assets/splash-logo.png")} style={{width: 280, height: 280, resizeMode: "contain"}} />
       </View>
       <View style={styles.buttons}>
         <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("Login", { mode: "login" })}>
