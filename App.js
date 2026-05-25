@@ -466,10 +466,21 @@ function LoginScreen({ navigation, route }) {
       });
       navigation.navigate("MainTabs");
     } catch (e) {
-      const msg = e?.code === "functions/resource-exhausted"
-        ? "Too many attempts. Please wait a few minutes and try again."
-        : (e?.message || "Could not create account. Please try again.");
-      setVerifyError(msg);
+      if (e?.code === "auth/email-already-in-use") {
+        Alert.alert(
+          "Account Already Exists",
+          "An account with this email already exists. Would you like to log in instead?",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Log In", onPress: () => { setSignupStage("form"); navigation.navigate("Login"); } }
+          ]
+        );
+      } else {
+        const msg = e?.code === "functions/resource-exhausted"
+          ? "Too many attempts. Please wait a few minutes and try again."
+          : (e?.message || "Could not create account. Please try again.");
+        setVerifyError(msg);
+      }
     }
     setVerifying(false);
   };
