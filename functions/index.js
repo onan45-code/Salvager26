@@ -184,6 +184,18 @@ exports.onBidCreate = onDocumentCreated(
       if (!listingDoc.exists) return;
       const listing = listingDoc.data();
 
+      if (listing.sellerId && bid.buyerId && listing.sellerId === bid.buyerId) {
+        logger.warn("Self-bid rejected", {
+          bidId: event.params.bidId,
+          sellerId: listing.sellerId,
+          buyerId: bid.buyerId,
+          buyerEmail: bid.buyerEmail,
+          amount: bid.amount,
+        });
+        await event.data.ref.delete();
+        return;
+      }
+
       const sellerSnap = await admin.firestore().collection("users")
         .where("uid", "==", listing.sellerId).limit(1).get();
       if (sellerSnap.empty) return;
@@ -274,3 +286,4 @@ function haversineMiles(a, b) {
     Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
+

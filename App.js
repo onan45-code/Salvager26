@@ -324,7 +324,7 @@ function WelcomeScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <Image source={require("./assets/logo.png")} style={{width: 280, height: 280, resizeMode: "contain"}} />
+        <Image source={require("./assets/login-logo.png")} style={{width: 280, height: 280, resizeMode: "contain"}} />
       </View>
       <View style={styles.buttons}>
         <TouchableOpacity style={styles.dealerButton} onPress={() => navigation.navigate("Login", { mode: "login" })}>
@@ -865,7 +865,7 @@ function HomeScreen({ navigation }) {
                 </View>
                 <View style={{flexDirection: "row", alignItems: "center", marginTop: 4}}>
                   <Ionicons name={l.needsTow ? "warning-outline" : "checkmark-circle-outline"} size={12} color={l.needsTow ? "#c0392b" : "#27AE60"} />
-                  <Text style={[styles.featuredPickup, {color: l.needsTow ? "#c0392b" : "#27AE60"}]}>{l.needsTow ? "Buyer pickup" : "Will deliver"}</Text>
+                  <Text style={[styles.featuredPickup, {color: l.needsTow ? "#c0392b" : "#27AE60"}]}>{l.needsTow ? "Buyer responsible for towing" : "Seller will deliver"}</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -1377,6 +1377,18 @@ function PlaceBidScreen({ route, navigation }) {
     const checkExisting = async () => {
       try {
         const user = auth.currentUser;
+        try {
+          await addDoc(collection(db, "debugAudit"), {
+            event: "placeBid_mount",
+            authUid: user?.uid || null,
+            authEmail: user?.email || null,
+            listingId: listing?.id || null,
+            listingSellerId: listing?.sellerId || null,
+            listingSellerEmail: listing?.sellerEmail || null,
+            sellerIdMatchesAuthUid: user?.uid && listing?.sellerId ? listing.sellerId === user.uid : null,
+            ts: serverTimestamp(),
+          });
+        } catch(_) {}
         if (listing.sellerId === user.uid) {
           Alert.alert("Your listing", "You can't bid on your own listing.");
           navigation.replace("SellerBids", { listing });
@@ -1479,10 +1491,13 @@ function PlaceBidScreen({ route, navigation }) {
         {listing.vin ? <Text style={styles.listingDetail}>VIN: {listing.vin}</Text> : null}
         <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
         <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
+        <View style={{flexDirection: "row", alignItems: "center", marginVertical: 4}}>
+          <Ionicons name={listing.needsTow ? "warning-outline" : "checkmark-circle-outline"} size={16} color={listing.needsTow ? "#c0392b" : "#27AE60"} />
+          <Text style={[styles.listingDetail, {marginLeft: 6, marginBottom: 0, color: listing.needsTow ? "#c0392b" : "#27AE60", fontWeight: "600"}]}>{listing.needsTow ? "Buyer responsible for towing" : "Seller will deliver"}</Text>
+        </View>
         <Text style={styles.listingDetail}>Runs: {listing.runs ? "Yes" : "No"}</Text>
         <Text style={styles.listingDetail}>Keys: {listing.hasKeys ? "Yes" : "No"}</Text>
         <Text style={styles.listingDetail}>Drivable: {listing.hasTitle ? "Yes" : "No"}</Text>
-        <Text style={styles.listingDetail}>Delivery: {listing.needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
         {listing.titleStatus ? <Text style={styles.listingDetail}>Title: {listing.titleStatus}</Text> : null}
         {listing.engineStatus ? <Text style={styles.listingDetail}>Engine: {listing.engineStatus}</Text> : null}
         {listing.transStatus ? <Text style={styles.listingDetail}>Transmission: {listing.transStatus}</Text> : null}
@@ -2409,10 +2424,13 @@ function MyBidScreen({ route, navigation }) {
         {listing.vin ? <Text style={styles.listingDetail}>VIN: {listing.vin}</Text> : null}
         <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text>
         <Text style={styles.listingDetail}>{listing.city}, {listing.zip}</Text>
+        <View style={{flexDirection: "row", alignItems: "center", marginVertical: 4}}>
+          <Ionicons name={listing.needsTow ? "warning-outline" : "checkmark-circle-outline"} size={16} color={listing.needsTow ? "#c0392b" : "#27AE60"} />
+          <Text style={[styles.listingDetail, {marginLeft: 6, marginBottom: 0, color: listing.needsTow ? "#c0392b" : "#27AE60", fontWeight: "600"}]}>{listing.needsTow ? "Buyer responsible for towing" : "Seller will deliver"}</Text>
+        </View>
         <Text style={styles.listingDetail}>Runs: {listing.runs ? "Yes" : "No"}</Text>
         <Text style={styles.listingDetail}>Keys: {listing.hasKeys ? "Yes" : "No"}</Text>
         <Text style={styles.listingDetail}>Drivable: {listing.hasTitle ? "Yes" : "No"}</Text>
-        <Text style={styles.listingDetail}>Delivery: {listing.needsTow ? "Buyer responsible for towing" : "Will Deliver"}</Text>
         {listing.titleStatus ? <Text style={styles.listingDetail}>Title: {listing.titleStatus}</Text> : null}
         {listing.engineStatus ? <Text style={styles.listingDetail}>Engine: {listing.engineStatus}</Text> : null}
         {listing.transStatus ? <Text style={styles.listingDetail}>Transmission: {listing.transStatus}</Text> : null}
