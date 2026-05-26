@@ -1,8 +1,9 @@
 {
-  "buildCommand": "npx expo export --platform web && cp public/sms-opt-in.html dist/sms-opt-in.html",
+  "buildCommand": "npx expo export --platform web && cp public/sms-opt-in.html dist/sms-opt-in.html && cp public/privacy.html dist/privacy.html",
   "outputDirectory": "dist",
   "framework": null,
   "routes": [
-    { "src": "/sms-opt-in", "dest": "/sms-opt-in.html" }
+    { "src": "/sms-opt-in", "dest": "/sms-opt-in.html" },
+    { "src": "/privacy", "dest": "/privacy.html" }
   ]
 }
