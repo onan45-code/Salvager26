@@ -408,6 +408,20 @@ function LoginScreen({ navigation, route }) {
     }
     setLoading(true);
     try {
+      const checkEmail = httpsCallable(getFunctions(), "checkEmailExists");
+      const emailRes = await checkEmail({ email });
+      if (emailRes?.data?.exists) {
+        setLoading(false);
+        Alert.alert(
+          "Account Already Exists",
+          "An account with this email already exists. Would you like to log in instead?",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Log In", onPress: () => navigation.navigate("Login", { mode: "login" }) }
+          ]
+        );
+        return;
+      }
       const send = httpsCallable(getFunctions(), "sendPhoneVerification");
       await send({ phoneNumber: phone });
       setSignupStage("verify");
@@ -456,14 +470,19 @@ function LoginScreen({ navigation, route }) {
         return;
       }
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      let token = null;
-      try { token = await registerForPushNotifications(); } catch (e) {}
-      await addDoc(collection(db, "users"), {
-        uid: cred.user.uid, email, firstName, lastName, phone, zipCode,
-        companyName: companyName || "", role, pushToken: token || "",
-        phoneVerified: true,
-        createdAt: serverTimestamp()
-      });
+      try {
+        let token = null;
+        try { token = await registerForPushNotifications(); } catch (e) {}
+        await addDoc(collection(db, "users"), {
+          uid: cred.user.uid, email, firstName, lastName, phone, zipCode,
+          companyName: companyName || "", role, pushToken: token || "",
+          phoneVerified: true,
+          createdAt: serverTimestamp()
+        });
+      } catch (postCreateErr) {
+        try { await cred.user.delete(); } catch (_) {}
+        throw postCreateErr;
+      }
       navigation.navigate("MainTabs");
     } catch (e) {
       if (e?.code === "auth/email-already-in-use") {

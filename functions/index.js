@@ -274,6 +274,25 @@ async function getZipCoords(zip, cache) {
   }
 }
 
+// Pre-signup email availability check. Called BEFORE phone verification
+// so users learn their email is taken without burning an SMS / their time.
+exports.checkEmailExists = onCall(async (request) => {
+  const email = String((request.data || {}).email || "").trim().toLowerCase();
+  if (!email || !email.includes("@")) {
+    throw new HttpsError("invalid-argument", "Invalid email");
+  }
+  try {
+    await admin.auth().getUserByEmail(email);
+    return { exists: true };
+  } catch (e) {
+    if (e.code === "auth/user-not-found") {
+      return { exists: false };
+    }
+    logger.error("checkEmailExists failed", { email, code: e.code, message: e.message });
+    throw new HttpsError("internal", "Couldn't check email. Please try again.");
+  }
+});
+
 function haversineMiles(a, b) {
   const R = 3958.8;
   const toRad = (deg) => (deg * Math.PI) / 180;
