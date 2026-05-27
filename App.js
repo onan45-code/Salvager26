@@ -357,6 +357,7 @@ function LoginScreen({ navigation, route }) {
   const [verifyError, setVerifyError] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [smsConsent, setSmsConsent] = useState(false);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -477,6 +478,9 @@ function LoginScreen({ navigation, route }) {
           uid: cred.user.uid, email, firstName, lastName, phone, zipCode,
           companyName: companyName || "", role, pushToken: token || "",
           phoneVerified: true,
+          smsConsent: smsConsent,
+          smsConsentTimestamp: smsConsent ? serverTimestamp() : null,
+          smsNotifications: smsConsent,
           createdAt: serverTimestamp()
         });
       } catch (postCreateErr) {
@@ -560,6 +564,22 @@ function LoginScreen({ navigation, route }) {
                 <Text style={[styles.toggleText, role === "both" && styles.toggleTextActive]}>Both</Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              style={{flexDirection: "row", alignItems: "flex-start", paddingVertical: 10, gap: 10}}
+              onPress={() => setSmsConsent(!smsConsent)}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 22, height: 22, borderWidth: 2, borderColor: "#1B2B5E", borderRadius: 4,
+                alignItems: "center", justifyContent: "center", marginTop: 2,
+                backgroundColor: smsConsent ? "#1B2B5E" : "transparent"
+              }}>
+                {smsConsent ? <Text style={{color: "#fff", fontWeight: "bold", fontSize: 14, lineHeight: 14}}>✓</Text> : null}
+              </View>
+              <Text style={{flex: 1, fontSize: 13, color: "#333", lineHeight: 18}}>
+                I agree to receive SMS messages from Salvager (account verification, bid alerts, and listing notifications). Msg & data rates may apply. Msg frequency varies. Reply STOP to opt out, HELP for help.
+              </Text>
+            </TouchableOpacity>
           </>
         )}
         <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#999999" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
@@ -2054,16 +2074,40 @@ function ProfileScreen({ navigation }) {
     setSmsNotifications(next);
     try {
       if (userData && userData.id) {
-        await updateDoc(doc(db, "users", userData.id), { smsNotifications: next });
+        await updateDoc(doc(db, "users", userData.id), {
+          smsNotifications: next,
+          smsConsent: next,
+          smsConsentTimestamp: next ? serverTimestamp() : null,
+        });
       } else {
         const newDoc = await addDoc(collection(db, "users"), {
           uid: user.uid, email: user.email, firstName, lastName, phone, zipCode, companyName,
-          pushToken: "", smsNotifications: next, createdAt: serverTimestamp()
+          pushToken: "",
+          smsNotifications: next,
+          smsConsent: next,
+          smsConsentTimestamp: next ? serverTimestamp() : null,
+          createdAt: serverTimestamp()
         });
         setUserData({ id: newDoc.id, uid: user.uid, smsNotifications: next });
       }
     } catch(e) {
       setSmsNotifications(!next);
+      Alert.alert("Error", e.message);
+    }
+  };
+
+  const handleGrantSmsConsent = async () => {
+    try {
+      if (userData && userData.id) {
+        await updateDoc(doc(db, "users", userData.id), {
+          smsConsent: true,
+          smsConsentTimestamp: serverTimestamp(),
+          smsNotifications: true,
+        });
+        setUserData({ ...userData, smsConsent: true, smsNotifications: true });
+        setSmsNotifications(true);
+      }
+    } catch(e) {
       Alert.alert("Error", e.message);
     }
   };
@@ -2095,6 +2139,34 @@ function ProfileScreen({ navigation }) {
           <Text style={styles.statLabel}>Bids Placed</Text>
         </View>
       </View>
+
+      {userData && userData.smsConsent !== true && (
+        <View style={{
+          backgroundColor: "#FFF8E1",
+          borderLeftWidth: 4,
+          borderLeftColor: "#F5A623",
+          padding: 16,
+          marginHorizontal: 16,
+          marginBottom: 12,
+          borderRadius: 8,
+        }}>
+          <Text style={{fontWeight: "bold", fontSize: 15, color: "#1B2B5E", marginBottom: 6}}>
+            Action needed: Confirm SMS consent
+          </Text>
+          <Text style={{fontSize: 13, color: "#333", lineHeight: 18, marginBottom: 12}}>
+            To keep receiving bid alerts and listing notifications, please confirm your consent. We&apos;ve paused SMS notifications until you opt in.
+          </Text>
+          <Text style={{fontSize: 12, color: "#555", lineHeight: 17, marginBottom: 12}}>
+            I agree to receive SMS messages from Salvager (account verification, bid alerts, and listing notifications). Msg &amp; data rates may apply. Msg frequency varies. Reply STOP to opt out, HELP for help.
+          </Text>
+          <TouchableOpacity
+            style={{backgroundColor: "#1B2B5E", paddingVertical: 12, borderRadius: 6, alignItems: "center"}}
+            onPress={handleGrantSmsConsent}
+          >
+            <Text style={{color: "#fff", fontWeight: "bold", fontSize: 14}}>I agree — turn on SMS</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.listingCard}>
         <Text style={styles.sectionLabel}>My Activity</Text>

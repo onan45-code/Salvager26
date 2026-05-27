@@ -139,6 +139,7 @@ exports.onListingCreate = onDocumentCreated(
 
       if (u.uid === listing.sellerId) { skipped++; continue; }
       if (u.role === "seller") { skipped++; continue; }
+      if (!u.smsConsent) { skipped++; continue; }
       if (!u.smsNotifications) { skipped++; continue; }
       if (!u.phone) { skipped++; continue; }
 
@@ -201,6 +202,10 @@ exports.onBidCreate = onDocumentCreated(
       if (sellerSnap.empty) return;
       const seller = sellerSnap.docs[0].data();
       if (!seller.phone) return;
+      if (!seller.smsConsent) {
+        logger.info("Bid placed SMS skipped — no SMS consent", { bidId: event.params.bidId, sellerUid: listing.sellerId });
+        return;
+      }
 
       const message = `New bid on Salvager! $${bid.amount} offered for your ${listing.year} ${listing.make} ${listing.model}. Open the app to review.`;
       await sendSms(seller.phone, message);
@@ -233,6 +238,10 @@ exports.onBidUpdate = onDocumentUpdated(
       if (buyerSnap.empty) return;
       const buyer = buyerSnap.docs[0].data();
       if (!buyer.phone) return;
+      if (!buyer.smsConsent) {
+        logger.info("Bid accepted SMS skipped — no SMS consent", { bidId: event.params.bidId, buyerUid: after.buyerId });
+        return;
+      }
 
       const vehicle = listing.year && listing.make
         ? `${listing.year} ${listing.make} ${listing.model}`
