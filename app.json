@@ -25,9 +25,11 @@
       }
     },
     "android": {
+      "package": "com.magamarc.CashForCars",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
@@ -38,18 +40,15 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "extra": {
-      "eas": {
-        "projectId": "aa722540-034a-4737-9e73-1efc9e4dd59c"
-      }
-    },
-    "owner": "magamarc",
+    "owner": "salvager",
     "plugins": [],
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "updates": {
-      "url": "https://u.expo.dev/aa722540-034a-4737-9e73-1efc9e4dd59c"
+    "extra": {
+      "eas": {
+        "projectId": "18869e4c-6b58-4fc4-9f62-f2db1a843952"
+      }
     }
   }
 }
