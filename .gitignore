@@ -43,6 +43,7 @@ skills-lock.json
 app-temp-alex.json
 credentials.json
 credentials/
+.creds/
 
 # Firebase Functions
 functions/node_modules/

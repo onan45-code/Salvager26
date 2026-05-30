@@ -26,6 +26,13 @@
       "android": {
         "serviceAccountKeyPath": "../../Creds/salvager-play-3af1e94165e2.json",
         "track": "internal"
+      },
+      "ios": {
+        "ascAppId": "6771887215",
+        "appleTeamId": "D7N7558TTP",
+        "ascApiKeyPath": "./.creds/AuthKey_Y67QA8S5AF.p8",
+        "ascApiKeyId": "Y67QA8S5AF",
+        "ascApiKeyIssuerId": "69a6de94-b7c0-47e3-e053-5b8c7c11a4d1"
       }
     }
   }
