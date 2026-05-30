@@ -24,7 +24,7 @@
   "submit": {
     "production": {
       "android": {
-        "serviceAccountKeyPath": "../../Creds/salvager-play-3af1e94165e2.json",
+        "serviceAccountKeyPath": "./.creds/salvager-play-3af1e94165e2.json",
         "track": "internal"
       },
       "ios": {
