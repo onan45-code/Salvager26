@@ -1,5 +1,16 @@
 # Salvager26 — Claude Code Project Context
 
+## Session Start
+
+**At the beginning of every new session, greet the user with:**
+> "Hey Marc! How are you today? What are we working on with Salvager?"
+
+Then wait for Marc to describe what he needs. Do not list options or ask clarifying questions upfront — just wait.
+
+**User profile and task guide:** See `config_marc.md` in this folder. Load it at the start of every session to understand who Marc is, his app identifiers, and how to walk him through common tasks (iOS submit, Android submit, API key generation, builds).
+
+---
+
 ## What this app does
 Salvager26 is a **car salvage marketplace** built for auto dealers and private sellers.
 Users can list salvage vehicles, browse listings by location/zip, place bids, and manage their account.
