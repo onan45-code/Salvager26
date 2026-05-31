@@ -577,7 +577,7 @@ function LoginScreen({ navigation, route }) {
                 {smsConsent ? <Text style={{color: "#fff", fontWeight: "bold", fontSize: 14, lineHeight: 14}}>✓</Text> : null}
               </View>
               <Text style={{flex: 1, fontSize: 13, color: "#333", lineHeight: 18}}>
-                By providing your phone number, you agree to receive SMS messages from Salvager for account notifications, including verification codes, bid alerts, and listing updates. Msg & data rates may apply. Msg frequency varies. Reply STOP to opt out, HELP for help.
+                I agree to receive SMS messages from Salvager (account verification, bid alerts, and listing notifications). Msg & data rates may apply. Msg frequency varies. Reply STOP to opt out, HELP for help.
               </Text>
             </TouchableOpacity>
           </>
@@ -2157,7 +2157,7 @@ function ProfileScreen({ navigation }) {
             To keep receiving bid alerts and listing notifications, please confirm your consent. We&apos;ve paused SMS notifications until you opt in.
           </Text>
           <Text style={{fontSize: 12, color: "#555", lineHeight: 17, marginBottom: 12}}>
-            By providing your phone number, you agree to receive SMS messages from Salvager for account notifications, including verification codes, bid alerts, and listing updates. Msg &amp; data rates may apply. Msg frequency varies. Reply STOP to opt out, HELP for help.
+            I agree to receive SMS messages from Salvager (account verification, bid alerts, and listing notifications). Msg &amp; data rates may apply. Msg frequency varies. Reply STOP to opt out, HELP for help.
           </Text>
           <TouchableOpacity
             style={{backgroundColor: "#1B2B5E", paddingVertical: 12, borderRadius: 6, alignItems: "center"}}
