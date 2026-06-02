@@ -377,7 +377,7 @@ function LoginScreen({ navigation, route }) {
     if (!email || !password) { Alert.alert("Error", "Please enter email and password"); return; }
     setLoading(true);
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       try {
         const token = await registerForPushNotifications();
         if (token) {
@@ -470,7 +470,7 @@ function LoginScreen({ navigation, route }) {
         setVerifying(false);
         return;
       }
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
       try {
         let token = null;
         try { token = await registerForPushNotifications(); } catch (e) {}
