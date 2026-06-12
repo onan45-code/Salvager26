@@ -10,7 +10,23 @@ Twilio Verify (phone OTP) is unchanged.
 
 1. Sign in to AWS Console → IAM → Users → Create user
 2. Name: `salvager26-sns` (or any name)
-3. Permissions: attach `AmazonSNSFullAccess` directly
+3. Permissions: attach a **least-privilege inline policy** (do NOT use `AmazonSNSFullAccess`).
+   On the Create-user permissions step choose "Attach policies directly" → "Create policy" → JSON tab, and paste:
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "AllowSnsSmsPublish",
+         "Effect": "Allow",
+         "Action": "sns:Publish",
+         "Resource": "*"
+       }
+     ]
+   }
+   ```
+   Name it `salvager26-sns-publish` and attach it to the user.
+   (`Resource` must be `*` — SMS is published to a phone number, not a topic ARN, so it can't be scoped further. `sns:Publish` is the only action the app uses.)
 4. Create user → Security credentials tab → Create access key
 5. Choose "Application running outside AWS"
 6. Save `Access key ID` and `Secret access key` — you'll only see the secret once
