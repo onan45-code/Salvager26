@@ -4,6 +4,8 @@ const { defineSecret } = require("firebase-functions/params");
 const { logger } = require("firebase-functions");
 const admin = require("firebase-admin");
 const twilio = require("twilio");
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
+const { Expo } = require("expo-server-sdk");
 
 admin.initializeApp();
 
@@ -13,9 +15,14 @@ const TWILIO_API_KEY_SID = defineSecret("TWILIO_API_KEY_SID");
 const TWILIO_API_KEY_SECRET = defineSecret("TWILIO_API_KEY_SECRET");
 const TWILIO_VERIFY_SERVICE_SID = defineSecret("TWILIO_VERIFY_SERVICE_SID");
 
-// Twilio Auth Token — used for SMS notifications
+// Twilio Auth Token — kept for reference, notifications now use AWS SNS
 const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
 const TWILIO_FROM_NUMBER = defineSecret("TWILIO_FROM_NUMBER");
+
+// AWS SNS — SMS notifications (replaces Twilio 10DLC)
+const AWS_ACCESS_KEY_ID = defineSecret("AWS_ACCESS_KEY_ID");
+const AWS_SECRET_ACCESS_KEY = defineSecret("AWS_SECRET_ACCESS_KEY");
+const AWS_SNS_REGION = defineSecret("AWS_SNS_REGION");
 
 function trimmed(secret) {
   return (secret.value() || "").trim();
@@ -40,6 +47,63 @@ async function sendSms(phone, message) {
     logger.error("Twilio SMS failed", { to, error: e.message });
     return false;
   }
+}
+
+async function sendSnsSms(phone, message) {
+  const to = normalizePhone(phone);
+  if (!to) return false;
+  try {
+    const client = new SNSClient({
+      region: trimmed(AWS_SNS_REGION) || "us-east-1",
+      credentials: {
+        accessKeyId: trimmed(AWS_ACCESS_KEY_ID),
+        secretAccessKey: trimmed(AWS_SECRET_ACCESS_KEY),
+      },
+    });
+    await client.send(new PublishCommand({
+      Message: message,
+      PhoneNumber: to,
+      MessageAttributes: {
+        "AWS.SNS.SMS.SMSType": { DataType: "String", StringValue: "Transactional" },
+      },
+    }));
+    return true;
+  } catch (e) {
+    logger.error("AWS SNS SMS failed", { to, error: e.message });
+    return false;
+  }
+}
+
+const EXPO_PROJECT_ID = "aa722540-034a-4737-9e73-1efc9e4dd59c";
+const expoClient = new Expo({ projectId: EXPO_PROJECT_ID });
+
+async function sendPushNotification(pushToken, title, body) {
+  if (!pushToken || !Expo.isExpoPushToken(pushToken)) return false;
+  try {
+    const chunks = expoClient.chunkPushNotifications([{ to: pushToken, sound: "default", title, body }]);
+    for (const chunk of chunks) {
+      await expoClient.sendPushNotificationsAsync(chunk);
+    }
+    return true;
+  } catch (e) {
+    logger.error("Push notification failed", { pushToken, error: e.message });
+    return false;
+  }
+}
+
+// Send push + SMS in parallel; either channel failing doesn't block the other
+async function notifyUser(user, pushTitle, smsMessage) {
+  const canPush = !!user.pushToken;
+  const canSms = !!(user.smsConsent && user.smsNotifications && user.phone);
+  if (!canPush && !canSms) return { pushSent: false, smsSent: false };
+  const results = await Promise.allSettled([
+    canPush ? sendPushNotification(user.pushToken, pushTitle, smsMessage) : Promise.resolve(false),
+    canSms ? sendSnsSms(user.phone, smsMessage) : Promise.resolve(false),
+  ]);
+  return {
+    pushSent: results[0].status === "fulfilled" && results[0].value === true,
+    smsSent: results[1].status === "fulfilled" && results[1].value === true,
+  };
 }
 
 exports.sendPhoneVerification = onCall(
@@ -116,11 +180,11 @@ exports.checkPhoneVerification = onCall(
   }
 );
 
-// New listing created → SMS fanout to buyers whose preferences match
+// New listing created → push + SMS fanout to buyers whose preferences match
 exports.onListingCreate = onDocumentCreated(
   {
     document: "listings/{listingId}",
-    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER],
+    secrets: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SNS_REGION],
   },
   async (event) => {
     const listing = event.data?.data();
@@ -139,9 +203,10 @@ exports.onListingCreate = onDocumentCreated(
 
       if (u.uid === listing.sellerId) { skipped++; continue; }
       if (u.role === "seller") { skipped++; continue; }
-      if (!u.smsConsent) { skipped++; continue; }
-      if (!u.smsNotifications) { skipped++; continue; }
-      if (!u.phone) { skipped++; continue; }
+
+      const canPush = !!u.pushToken;
+      const canSms = !!(u.smsConsent && u.smsNotifications && u.phone);
+      if (!canPush && !canSms) { skipped++; continue; }
 
       const prefs = u.buyingPreferences;
       if (!prefs || !prefs.zip) { skipped++; continue; }
@@ -162,19 +227,19 @@ exports.onListingCreate = onDocumentCreated(
       }
 
       const message = `New on Salvager: ${listing.year} ${listing.make} ${listing.model}${listing.city ? " in " + listing.city : ""}. Open the app to see details.`;
-      const ok = await sendSms(u.phone, message);
-      if (ok) sent++; else skipped++;
+      const { pushSent, smsSent } = await notifyUser(u, "New listing on Salvager", message);
+      if (pushSent || smsSent) sent++; else skipped++;
     }
 
     logger.info("Listing notification fanout", { listingId: event.params.listingId, sent, skipped });
   }
 );
 
-// Bid placed → SMS to seller
+// Bid placed → push + SMS to seller
 exports.onBidCreate = onDocumentCreated(
   {
     document: "bids/{bidId}",
-    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER],
+    secrets: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SNS_REGION],
   },
   async (event) => {
     const bid = event.data?.data();
@@ -201,27 +266,27 @@ exports.onBidCreate = onDocumentCreated(
         .where("uid", "==", listing.sellerId).limit(1).get();
       if (sellerSnap.empty) return;
       const seller = sellerSnap.docs[0].data();
-      if (!seller.phone) return;
-      if (!seller.smsConsent) {
-        logger.info("Bid placed SMS skipped — no SMS consent", { bidId: event.params.bidId, sellerUid: listing.sellerId });
+
+      if (!seller.pushToken && (!seller.smsConsent || !seller.phone)) {
+        logger.info("Bid placed notification skipped — no push token or SMS consent", { bidId: event.params.bidId, sellerUid: listing.sellerId });
         return;
       }
 
       const message = `New bid on Salvager! $${bid.amount} offered for your ${listing.year} ${listing.make} ${listing.model}. Open the app to review.`;
-      await sendSms(seller.phone, message);
+      const { pushSent, smsSent } = await notifyUser(seller, "New bid on your listing", message);
 
-      logger.info("Bid placed SMS sent", { bidId: event.params.bidId, sellerUid: listing.sellerId });
+      logger.info("Bid placed notification sent", { bidId: event.params.bidId, sellerUid: listing.sellerId, pushSent, smsSent });
     } catch (e) {
       logger.error("onBidCreate error", { error: e.message });
     }
   }
 );
 
-// Bid accepted → SMS to buyer
+// Bid accepted → push + SMS to buyer
 exports.onBidUpdate = onDocumentUpdated(
   {
     document: "bids/{bidId}",
-    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER],
+    secrets: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SNS_REGION],
   },
   async (event) => {
     const before = event.data?.before?.data();
@@ -237,9 +302,9 @@ exports.onBidUpdate = onDocumentUpdated(
         .where("uid", "==", after.buyerId).limit(1).get();
       if (buyerSnap.empty) return;
       const buyer = buyerSnap.docs[0].data();
-      if (!buyer.phone) return;
-      if (!buyer.smsConsent) {
-        logger.info("Bid accepted SMS skipped — no SMS consent", { bidId: event.params.bidId, buyerUid: after.buyerId });
+
+      if (!buyer.pushToken && (!buyer.smsConsent || !buyer.phone)) {
+        logger.info("Bid accepted notification skipped — no push token or SMS consent", { bidId: event.params.bidId, buyerUid: after.buyerId });
         return;
       }
 
@@ -247,9 +312,9 @@ exports.onBidUpdate = onDocumentUpdated(
         ? `${listing.year} ${listing.make} ${listing.model}`
         : "the vehicle";
       const message = `Your $${after.amount} bid on Salvager was accepted! Open the app for seller contact info on the ${vehicle}.`;
-      await sendSms(buyer.phone, message);
+      const { pushSent, smsSent } = await notifyUser(buyer, "Your bid was accepted!", message);
 
-      logger.info("Bid accepted SMS sent", { bidId: event.params.bidId, buyerUid: after.buyerId });
+      logger.info("Bid accepted notification sent", { bidId: event.params.bidId, buyerUid: after.buyerId, pushSent, smsSent });
     } catch (e) {
       logger.error("onBidUpdate error", { error: e.message });
     }

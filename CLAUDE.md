@@ -96,15 +96,26 @@ Queried by `where("uid", "==", ...)` not by document id.
 | `zipCode` | string | User ZIP for local search |
 | `uid` | string | Firebase Auth UID |
 | `pushToken` | string | Expo push notification token |
+| `role` | string | "buyer" or "seller" |
+| `smsConsent` | boolean | User agreed to receive SMS notifications |
+| `smsNotifications` | boolean | SMS notifications currently enabled |
+| `buyingPreferences` | object | `{ zip, radius, makes[], yearFrom, yearTo, runsOnly, cleanTitleOnly }` |
 | `createdAt` | timestamp | Account creation time |
 
 ---
 
 ## Push Notifications
-- Expo Push API directly — no server
-- Triggers: bid placed (notifies seller) + bid accepted (notifies buyer)
+- Expo push tokens registered in App.js on login/signup, saved to `users.pushToken`
+- **Server-side delivery:** Cloud Functions (`onListingCreate`, `onBidCreate`, `onBidUpdate`) use `expo-server-sdk` to send push from the backend (more reliable than client-only)
+- App.js also sends push for bid events directly — server-side is the authoritative path
 - Failures silently swallowed — missing token never breaks main flow
 - Expo project ID: `aa722540-034a-4737-9e73-1efc9e4dd59c`
+
+## SMS Notifications (AWS SNS)
+- Cloud Functions use AWS SNS to send transactional SMS (replaces Twilio 10DLC)
+- Twilio Verify (phone OTP) is KEPT — only notification SMS moved to AWS SNS
+- Required Firebase secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SNS_REGION`
+- Users must have `smsConsent: true` + `smsNotifications: true` + `phone` to receive SMS
 
 ## Geolocation / Radius Filtering
 - ZIP → lat/lon via `https://api.zippopotam.us/us/{zip}` (free, no key)
