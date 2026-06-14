@@ -712,6 +712,7 @@ function HomeScreen({ navigation }) {
   const [activeCount, setActiveCount] = useState(0);
   const [soldCount, setSoldCount] = useState(0);
   const [bidsPlacedCount, setBidsPlacedCount] = useState(0);
+  const [purchasesCount, setPurchasesCount] = useState(0);
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -735,7 +736,8 @@ function HomeScreen({ navigation }) {
         setSoldCount(myListings.filter(l => l.status === "sold").length);
 
         const myBidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
-        setBidsPlacedCount(myBidsSnap.size);
+        setBidsPlacedCount(myBidsSnap.docs.filter(d => d.data().status !== "accepted").length);
+        setPurchasesCount(myBidsSnap.docs.filter(d => d.data().status === "accepted").length);
 
         const ids = listings.map(l => l.id);
         const bidStats = {};
@@ -787,7 +789,7 @@ function HomeScreen({ navigation }) {
             events.push({
               id: "sold-" + l.id,
               type: "sold",
-              ts: l.createdAt,
+              ts: l.soldAt || l.createdAt,
               amount: l.soldPrice,
               label: l.year + " " + l.make + " " + l.model,
             });
@@ -818,7 +820,7 @@ function HomeScreen({ navigation }) {
               </View>
               <Text style={styles.statNumber}>{activeCount}</Text>
             </View>
-            <Text style={styles.statLabel}>Listings</Text>
+            <Text style={styles.statLabel}>My Listings</Text>
             <Text style={styles.statLink}>View all →</Text>
           </TouchableOpacity>
         )}
@@ -830,7 +832,7 @@ function HomeScreen({ navigation }) {
               </View>
               <Text style={styles.statNumber}>{soldCount}</Text>
             </View>
-            <Text style={styles.statLabel}>Sold</Text>
+            <Text style={styles.statLabel}>My Sold Units</Text>
             <Text style={styles.statLink}>View all →</Text>
           </TouchableOpacity>
         )}
@@ -842,7 +844,19 @@ function HomeScreen({ navigation }) {
               </View>
               <Text style={styles.statNumber}>{bidsPlacedCount}</Text>
             </View>
-            <Text style={styles.statLabel}>Bids</Text>
+            <Text style={styles.statLabel}>My Bids</Text>
+            <Text style={styles.statLink}>View all →</Text>
+          </TouchableOpacity>
+        )}
+        {(role === "buyer" || role === "both") && (
+          <TouchableOpacity style={styles.statCard} onPress={() => navigation.navigate("MyPurchases")} activeOpacity={0.7}>
+            <View style={styles.statTopRow}>
+              <View style={[styles.statIconCircle, {backgroundColor: "#8e44ad"}]}>
+                <Ionicons name="cart" size={16} color="#ffffff" />
+              </View>
+              <Text style={styles.statNumber}>{purchasesCount}</Text>
+            </View>
+            <Text style={styles.statLabel}>Purchases</Text>
             <Text style={styles.statLink}>View all →</Text>
           </TouchableOpacity>
         )}
@@ -1103,7 +1117,7 @@ function SellerBidsScreen({ route, navigation }) {
               sellerName = ((s.firstName || "") + " " + (s.lastName || "")).trim();
             }
           } catch(e) {}
-          await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail, soldToPhone: buyerPhone, soldToName: buyerName, sellerPhone, sellerName });
+          await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail, soldToPhone: buyerPhone, soldToName: buyerName, sellerPhone, sellerName, soldAt: serverTimestamp() });
           await updateDoc(doc(db, "bids", bid.id), { status: "accepted", buyerPhone, buyerName, sellerPhone, sellerName });
           setBids(bids.map(b => b.id === bid.id ? { ...b, status: "accepted", buyerPhone, buyerName, sellerPhone, sellerName } : b));
           setListing({ ...listing, status: "sold", soldPrice: bid.amount, soldToEmail: bid.buyerEmail, soldToPhone: buyerPhone, soldToName: buyerName, sellerPhone, sellerName });
@@ -1138,6 +1152,9 @@ function SellerBidsScreen({ route, navigation }) {
           {listing.status !== "sold" && <TouchableOpacity onPress={handleDeleteListing}>
             <Text style={{color: "#c0392b", fontSize: 20, fontWeight: "bold"}}>Delete</Text>
           </TouchableOpacity>}
+          <TouchableOpacity onPress={() => navigation.navigate("MainTabs", { screen: "Home" })}>
+            <Text style={styles.logoutText}>Home</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.logoutText}>Back</Text>
           </TouchableOpacity>
@@ -1541,7 +1558,7 @@ function PlaceBidScreen({ route, navigation }) {
         {listing.titleStatus ? <Text style={styles.listingDetail}>Title: {listing.titleStatus}</Text> : null}
         {listing.engineStatus ? <Text style={styles.listingDetail}>Engine: {listing.engineStatus}</Text> : null}
         {listing.transStatus ? <Text style={styles.listingDetail}>Transmission: {listing.transStatus}</Text> : null}
-        {listing.airbags ? <Text style={styles.listingDetail}>Airbags: {listing.airbags}</Text> : null}
+        {listing.airbags ? <Text style={styles.listingDetail}>Airbags: {listing.airbags === "none" ? "No airbags deployed" : listing.airbags === "deployed" ? "One or more deployed" : listing.airbags}</Text> : null}
         {listing.tires ? <Text style={styles.listingDetail}>Tires: {listing.tires}</Text> : null}
         {listing.damage ? <Text style={styles.listingDetail}>Damage: {listing.damage}</Text> : null}
         {listing.notes ? <Text style={styles.listingDetail}>Notes: {listing.notes}</Text> : null}
@@ -2423,7 +2440,7 @@ function MyBidScreen({ route, navigation }) {
         }
       } catch(e) {}
       await updateDoc(doc(db, "bids", myBid.id), { amount: counterAmt, status: "accepted", counterStatus: "accepted", buyerPhone, buyerName, sellerPhone, sellerName });
-      await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: counterAmt, soldToEmail: user.email, soldToPhone: buyerPhone, soldToName: buyerName, sellerPhone, sellerName });
+      await updateDoc(doc(db, "listings", listing.id), { status: "sold", soldPrice: counterAmt, soldToEmail: user.email, soldToPhone: buyerPhone, soldToName: buyerName, sellerPhone, sellerName, soldAt: serverTimestamp() });
       try {
         if (sellerToken) {
           await fetch("https://exp.host/--/api/v2/push/send", {
@@ -2526,7 +2543,7 @@ function MyBidScreen({ route, navigation }) {
         {listing.titleStatus ? <Text style={styles.listingDetail}>Title: {listing.titleStatus}</Text> : null}
         {listing.engineStatus ? <Text style={styles.listingDetail}>Engine: {listing.engineStatus}</Text> : null}
         {listing.transStatus ? <Text style={styles.listingDetail}>Transmission: {listing.transStatus}</Text> : null}
-        {listing.airbags ? <Text style={styles.listingDetail}>Airbags: {listing.airbags}</Text> : null}
+        {listing.airbags ? <Text style={styles.listingDetail}>Airbags: {listing.airbags === "none" ? "No airbags deployed" : listing.airbags === "deployed" ? "One or more deployed" : listing.airbags}</Text> : null}
         {listing.tires ? <Text style={styles.listingDetail}>Tires: {listing.tires}</Text> : null}
         {listing.damage ? <Text style={styles.listingDetail}>Damage: {listing.damage}</Text> : null}
         {listing.notes ? <Text style={styles.listingDetail}>Notes: {listing.notes}</Text> : null}
@@ -2597,7 +2614,7 @@ function MyBidsScreen({ navigation }) {
     try {
       const user = auth.currentUser;
       const bidsSnap = await getDocs(query(collection(db, "bids"), where("buyerId", "==", user.uid)));
-      const bidsData = bidsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const bidsData = bidsSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(b => b.status !== "accepted");
       const bidsWithListings = await Promise.all(bidsData.map(async bid => {
         try {
           const listingSnap = await getDocs(query(collection(db, "listings"), where("__name__", "==", bid.listingId)));
@@ -2688,6 +2705,22 @@ function MySoldListingsScreen({ navigation }) {
     return unsub;
   }, [navigation]);
 
+  const handleRemoveSold = (id) => {
+    Alert.alert(
+      "Remove sold vehicle",
+      "This removes it from your sold list. The sale record is kept for your history, but it won't show here anymore.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: async () => {
+          try {
+            await updateDoc(doc(db, "listings", id), { status: "deleted" });
+            fetchSold();
+          } catch(e) { Alert.alert("Error", e.message); }
+        }},
+      ]
+    );
+  };
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{flex: 1}}>
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -2706,13 +2739,16 @@ function MySoldListingsScreen({ navigation }) {
       ) : listings.map(l => {
         const fee = Math.round((l.soldPrice || 0) * PLATFORM_FEE_PERCENT / 100);
         return (
-          <ListingCard key={l.id} listing={l} style={styles.acceptedCard}>
+          <ListingCard key={l.id} listing={l} style={styles.acceptedCard} hideSpecs>
             <Text style={styles.bidAmount}>SOLD - ${l.soldPrice}</Text>
             {l.soldToName ? <Text style={styles.listingDetail}>Buyer: {l.soldToName}</Text> : null}
             <Text style={styles.listingDetail}>Email: {l.soldToEmail || "—"}</Text>
             {l.soldToPhone ? <Text style={styles.listingDetail}>Phone: {l.soldToPhone}</Text> : null}
             <Text style={styles.listingDetail}>Platform fee ({PLATFORM_FEE_PERCENT}%): -${fee}</Text>
             <Text style={[styles.listingDetail, {fontWeight: "bold", color: "#1a1a1a"}]}>Net: ${(l.soldPrice || 0) - fee}</Text>
+            <TouchableOpacity onPress={() => handleRemoveSold(l.id)} style={{marginTop: 12}}>
+              <Text style={{color: "#c0392b", fontSize: 16, fontWeight: "bold"}}>Delete</Text>
+            </TouchableOpacity>
           </ListingCard>
         );
       })}
@@ -2838,7 +2874,7 @@ function EditListingScreen({ route, navigation }) {
   );
 }
 
-function ListingCard({ listing, onPress, style, children, showVin }) {
+function ListingCard({ listing, onPress, style, children, showVin, hideSpecs }) {
   const bidCount = listing.bidCount || 0;
   return (
     <TouchableOpacity style={[styles.listingCard, style]} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
@@ -2847,10 +2883,14 @@ function ListingCard({ listing, onPress, style, children, showVin }) {
       )}
       <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
       {showVin && listing.vin ? <Text style={styles.listingDetail}>VIN: {listing.vin}</Text> : null}
-      {listing.mileage ? <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text> : null}
-      {(listing.city || listing.zip) ? <Text style={styles.listingDetail}>{listing.city}{listing.city && listing.zip ? ", " : ""}{listing.zip}</Text> : null}
-      <Text style={styles.listingDetail}>Runs: {listing.runs ? "Yes" : "No"}</Text>
-      <Text style={styles.listingDetail}>Has Title: {listing.hasTitle ? "Yes" : "No"}</Text>
+      {!hideSpecs && (
+        <>
+          {listing.mileage ? <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text> : null}
+          {(listing.city || listing.zip) ? <Text style={styles.listingDetail}>{listing.city}{listing.city && listing.zip ? ", " : ""}{listing.zip}</Text> : null}
+          <Text style={styles.listingDetail}>Runs: {listing.runs ? "Yes" : "No"}</Text>
+          <Text style={styles.listingDetail}>Has Title: {listing.hasTitle ? "Yes" : "No"}</Text>
+        </>
+      )}
       <Text style={[styles.listingDetail, {fontWeight: "bold", color: "#1B2B5E"}]}>{bidCount === 1 ? "1 bid" : bidCount + " bids"}</Text>
       {children}
     </TouchableOpacity>
@@ -2885,8 +2925,8 @@ const styles = StyleSheet.create({
   emptyStateSubtext: { color: "#555555", fontSize: 14 },
   sectionLabel: { color: "#1B2B5E", fontSize: 14, fontWeight: "bold", marginTop: 8, textTransform: "uppercase" },
   fieldLabel: { color: "#666666", fontSize: 13, fontWeight: "500", marginTop: 6, marginBottom: 4 },
-  statsRow: { flexDirection: "row", gap: 16, marginBottom: 24 },
-  statCard: { flex: 1, backgroundColor: "#ffffff", borderRadius: 16, padding: 12, alignItems: "flex-start", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3, borderWidth: 1, borderColor: "#eeeeee" },
+  statsRow: { flexDirection: "row", flexWrap: "wrap", gap: 16, marginBottom: 24 },
+  statCard: { flexBasis: "47%", flexGrow: 1, backgroundColor: "#ffffff", borderRadius: 16, padding: 12, alignItems: "flex-start", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3, borderWidth: 1, borderColor: "#eeeeee" },
   statTopRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   statIconCircle: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", marginRight: 8 },
   statNumber: { fontSize: 24, fontWeight: "bold", color: "#1a1a1a" },
