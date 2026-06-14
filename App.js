@@ -993,6 +993,7 @@ function MyListingsScreen({ navigation }) {
         <ListingCard
           key={listing.id}
           listing={listing}
+          showVin
           style={listing.status === "sold" && styles.soldCard}
           onPress={() => navigation.navigate("SellerBids", { listing })}
         >
@@ -2837,7 +2838,7 @@ function EditListingScreen({ route, navigation }) {
   );
 }
 
-function ListingCard({ listing, onPress, style, children }) {
+function ListingCard({ listing, onPress, style, children, showVin }) {
   const bidCount = listing.bidCount || 0;
   return (
     <TouchableOpacity style={[styles.listingCard, style]} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
@@ -2845,6 +2846,7 @@ function ListingCard({ listing, onPress, style, children }) {
         <Image source={{ uri: listing.photos[0] }} style={styles.listingPhoto} />
       )}
       <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}{listing.trim ? " " + listing.trim : ""}</Text>
+      {showVin && listing.vin ? <Text style={styles.listingDetail}>VIN: {listing.vin}</Text> : null}
       {listing.mileage ? <Text style={styles.listingDetail}>Mileage: {listing.mileage}</Text> : null}
       {(listing.city || listing.zip) ? <Text style={styles.listingDetail}>{listing.city}{listing.city && listing.zip ? ", " : ""}{listing.zip}</Text> : null}
       <Text style={styles.listingDetail}>Runs: {listing.runs ? "Yes" : "No"}</Text>
