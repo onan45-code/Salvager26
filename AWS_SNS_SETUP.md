@@ -94,4 +94,45 @@ firebase deploy --only functions --project salvager26
 
 ---
 
+## Key Rotation — rotate the AWS credentials (do this now)
+
+The original key (`AKIAZD2ZSL3MNQNWCHUS` on user `oleksiy-salvager`) was shared in a chat session and must be replaced with a scoped key on a dedicated user.
+
+**On Marc's Mac — AWS Console (browser):**
+
+1. Sign in to AWS → **IAM → Users → Create user**
+2. Name: `salvager26-sns`
+3. Permissions → Attach policies directly → **Create policy** → JSON tab → paste:
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "AllowSnsSmsPublish",
+         "Effect": "Allow",
+         "Action": "sns:Publish",
+         "Resource": "*"
+       }
+     ]
+   }
+   ```
+   Name the policy `salvager26-sns-publish` → attach it → finish creating the user.
+4. Open the new user → **Security credentials** → **Create access key** → "Application running outside AWS"
+5. Copy the new **Access Key ID** and **Secret Access Key** — send them to Alex.
+
+**Alex does (Terminal — can be done from Alex's machine):**
+
+```bash
+echo "NEW_ACCESS_KEY_ID" | firebase functions:secrets:set AWS_ACCESS_KEY_ID --project salvager26
+echo "NEW_SECRET_ACCESS_KEY" | firebase functions:secrets:set AWS_SECRET_ACCESS_KEY --project salvager26
+```
+
+No redeploy needed — Firebase Functions pick up the new secret version on the next invocation.
+
+**Then — delete the old key:**
+
+AWS Console → IAM → Users → `oleksiy-salvager` → Security credentials → find key `AKIAZD2ZSL3MNQNWCHUS` → **Delete**.
+
+---
+
 *Alex K — June 2026*
